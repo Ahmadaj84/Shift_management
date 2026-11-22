@@ -2,83 +2,83 @@
   <div class="page">
     <div class="page-head">
       <div>
-        <h1>Dashboard</h1>
-        <p>{{ fmtDate(today) }} · {{ base.settings.departmentName }}</p>
+        <h1>{{ t('nav.dashboard') }}</h1>
+        <p>{{ fmtDate(today) }} · {{ deptName(base.settings.departmentName) }}</p>
       </div>
-      <RouterLink to="/schedule" class="btn">Open team schedule →</RouterLink>
+      <RouterLink to="/schedule" class="btn">{{ t('dash.openSchedule') }}</RouterLink>
     </div>
 
     <div class="grid grid-4 mb">
       <div class="card stat">
-        <span class="label">Team in rotation</span>
+        <span class="label">{{ t('dash.inRotation') }}</span>
         <span class="value">{{ rotation.length }}</span>
         <EcgLine class="trace" :height="30" :beats="2" color="#0e9f6e" />
       </div>
       <div class="card stat">
-        <span class="label">Pending requests</span>
+        <span class="label">{{ t('dash.pendingRequests') }}</span>
         <span class="value" :style="{ color: pending.length ? 'var(--heart)' : '' }">{{ pending.length }}</span>
-        <RouterLink to="/requests" class="small muted">Review →</RouterLink>
+        <RouterLink to="/requests" class="small muted">{{ t('dash.review') }}</RouterLink>
       </div>
       <div class="card stat">
-        <span class="label">Absent today</span>
+        <span class="label">{{ t('dash.absentToday') }}</span>
         <span class="value">{{ todayDay?.absent.length ?? 0 }}</span>
       </div>
       <div class="card stat">
         <span class="label">{{ monthLabel(month) }}</span>
-        <span class="value small-value">{{ schedule ? (schedule.published ? 'Published' : 'Draft') : 'Not generated' }}</span>
-        <span v-if="warnings.length" class="small" style="color: var(--danger)">{{ warnings.length }} understaffed day(s)</span>
+        <span class="value small-value">{{ schedule ? (schedule.published ? t('dash.published') : t('dash.draft')) : t('dash.notGenerated') }}</span>
+        <span v-if="warnings.length" class="small" style="color: var(--danger)">{{ t('schedule.understaffed', { n: warnings.length }) }}</span>
       </div>
     </div>
 
     <div class="grid grid-2">
       <div class="card">
         <div class="card-head">
-          <h2>On duty today</h2>
+          <h2>{{ t('dash.onDuty') }}</h2>
           <div class="tabs">
-            <button :class="{ active: dayOffset === 0 }" @click="dayOffset = 0">Today</button>
-            <button :class="{ active: dayOffset === 1 }" @click="dayOffset = 1">Tomorrow</button>
+            <button :class="{ active: dayOffset === 0 }" @click="dayOffset = 0">{{ t('month.today') }}</button>
+            <button :class="{ active: dayOffset === 1 }" @click="dayOffset = 1">{{ t('dash.tomorrow') }}</button>
           </div>
         </div>
         <div v-if="!focusDay" class="empty">
-          No schedule for this day yet.
-          <div class="mt"><RouterLink to="/schedule" class="btn btn-primary">Generate schedule</RouterLink></div>
+          {{ t('dash.noSchedule') }}
+          <div class="mt"><RouterLink to="/schedule" class="btn btn-primary">{{ t('schedule.generate') }}</RouterLink></div>
         </div>
         <template v-else>
           <div v-for="s in base.settings.shifts" :key="s.id" class="duty">
             <div class="duty-head">
               <ShiftBadge :shift="s" />
-              <span class="small muted">{{ s.start }}–{{ s.end }}</span>
+              <span class="small muted" dir="ltr">{{ s.start }}–{{ s.end }}</span>
               <span class="spacer"></span>
-              <span class="small bk">Backup: <strong>{{ focusDay.backup[s.id] ? userName(focusDay.backup[s.id]) : '—' }}</strong></span>
+              <span class="small bk">{{ t('status.backup') }}: <strong>{{ focusDay.backup[s.id] ? userName(focusDay.backup[s.id]) : '—' }}</strong></span>
             </div>
             <div class="people">
               <span v-for="id in focusDay.shifts[s.id]" :key="id" class="person">{{ userName(id) }}</span>
               <span v-if="focusDay.shifts[s.id].length < base.settings.staffPerShift" class="badge badge-rejected">
-                {{ base.settings.staffPerShift - focusDay.shifts[s.id].length }} missing
+                {{ t('dash.missing', { n: base.settings.staffPerShift - focusDay.shifts[s.id].length }) }}
               </span>
             </div>
           </div>
           <div v-if="focusDay.absent.length" class="small mt" style="color: var(--heart)">
-            On leave / excused: {{ focusDay.absent.map(userName).join(', ') }}
+            {{ t('dash.onLeave') }}: {{ focusDay.absent.map(userName).join('، ') }}
           </div>
-          <div v-if="focusDay.off.length" class="small muted">Day off: {{ focusDay.off.map(userName).join(', ') }}</div>
+          <div v-if="focusDay.off.length" class="small muted">{{ t('status.dayOff') }}: {{ focusDay.off.map(userName).join('، ') }}</div>
         </template>
       </div>
 
       <div class="card">
         <div class="card-head">
-          <h2>Pending requests</h2>
-          <RouterLink to="/requests" class="small muted">View all</RouterLink>
+          <h2>{{ t('dash.pendingRequests') }}</h2>
+          <RouterLink to="/requests" class="small muted">{{ t('dash.viewAll') }}</RouterLink>
         </div>
-        <div v-if="!pending.length" class="empty">No pending requests 🎉</div>
+        <div v-if="!pending.length" class="empty">{{ t('dash.noPending') }}</div>
         <div v-for="r in pending.slice(0, 6)" :key="r.id" class="req">
           <div>
             <strong>{{ userName(r.userId) }}</strong>
             <div class="small muted">
-              {{ r.type === 'excuse' ? `Excuse · ${fmtDate(r.date)}` : `Leave · ${fmtDate(r.startDate)} → ${fmtDate(r.endDate)}` }}
+              {{ r.type === 'excuse' ? `${t('req.excuse')} · ${fmtDate(r.date)}` : `${t('req.leave')} · ${fmtDate(r.startDate)} ${t('arrow')} ${fmtDate(r.endDate)}` }}
             </div>
           </div>
-          <span class="badge badge-pending">pending</span>
+          <span class="badge badge-pending">{{ t('status.pending') }}</span>
         </div>
       </div>
     </div>
@@ -92,6 +92,7 @@ import EcgLine from '../components/EcgLine.vue';
 import ShiftBadge from '../components/ShiftBadge.vue';
 import { api } from '../api.js';
 import { base, userName } from '../store.js';
+import { t, deptName } from '../i18n.js';
 import { currentMonth, fmtDate, monthLabel, todayStr } from '../utils.js';
 
 const today = todayStr();
@@ -113,7 +114,7 @@ const focusDay = computed(() => {
   const s = tomorrow.slice(0, 7) === month ? schedule.value : nextSchedule.value;
   return s?.days?.[tomorrow];
 });
-const warnings = computed(() => (schedule.value ? Object.values(schedule.value.days).filter((d) => d.warnings?.length) : []));
+const warnings = computed(() => (schedule.value ? Object.values(schedule.value.days).filter((d) => base.settings.shifts.some((s) => (d.shifts[s.id]?.length || 0) < base.settings.staffPerShift)) : []));
 
 onMounted(async () => {
   const calls = [api(`/schedule/${month}`), api('/requests?status=pending')];

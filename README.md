@@ -1,4 +1,7 @@
-# ECG Shift Management
+# نظام إدارة مناوبات تخطيط القلب · ECG Shift Management
+
+واجهة النظام باللغة **العربية** افتراضياً (من اليمين إلى اليسار)، مع زر للتبديل إلى الإنجليزية.
+The interface is **Arabic by default** (right-to-left), with a one-click switch to English.
 
 Shift scheduling web app for an ECG technician team.
 **Frontend:** Vue 3 + Vite · **Backend:** Node.js + Express · **Database:** a JSON file (`server/data/db.json`).
@@ -17,6 +20,13 @@ Shift scheduling web app for an ECG technician team.
 - Team Schedule: the published team roster (read-only)
 - Leave & Excuses: request leave or a one-day excuse, track its status, cancel pending requests
 - Change password
+
+## Language
+
+- Arabic is the default; the العربية / English switch is on the login page and in the sidebar (the choice is remembered per browser).
+- All text is in `client/src/locales/ar.js` and `client/src/locales/en.js`. API error messages are translated in the browser (see the `errors` map in `ar.js`).
+- Dates use the Gregorian calendar with Western digits in both languages.
+- Built-in shift names (صباحي / مسائي / ليلي) follow the selected language. Custom names set in Settings are shown as typed.
 
 ## How the schedule is built
 

@@ -2,30 +2,30 @@
   <div class="page">
     <div class="page-head">
       <div>
-        <h1>Team</h1>
-        <p>{{ rotation.length }} technicians in rotation · each has two days off per week</p>
+        <h1>{{ t('team.title') }}</h1>
+        <p>{{ t('team.subtitle', { n: rotation.length }) }}</p>
       </div>
       <div class="row">
-        <button class="btn" @click="balance">⚖ Auto-balance days off</button>
-        <button class="btn btn-primary" @click="openEdit()">+ Add member</button>
+        <button class="btn" @click="balance">⚖ {{ t('team.balance') }}</button>
+        <button class="btn btn-primary" @click="openEdit()">+ {{ t('team.add') }}</button>
       </div>
     </div>
 
     <div class="card mb">
       <div class="card-head">
-        <h2>Weekly coverage</h2>
-        <span class="small muted">Needed per day: {{ needed }} ({{ base.settings.shifts.length }} shifts × {{ base.settings.staffPerShift }})</span>
+        <h2>{{ t('team.coverage') }}</h2>
+        <span class="small muted">{{ t('team.neededPerDay', { n: needed, shifts: base.settings.shifts.length, per: base.settings.staffPerShift }) }}</span>
       </div>
       <div class="coverage">
         <div v-for="c in coverage" :key="c.weekday" class="cov" :class="{ bad: c.available < c.needed }">
-          <div class="wd">{{ WD_SHORT[c.weekday] }}</div>
+          <div class="wd">{{ wdShort()[c.weekday] }}</div>
           <div class="avail">{{ c.available }}</div>
-          <div class="small">available</div>
-          <div class="small muted">{{ c.off }} off</div>
+          <div class="small">{{ t('team.available') }}</div>
+          <div class="small muted">{{ t('team.offCount', { n: c.off }) }}</div>
         </div>
       </div>
       <div v-if="coverage.some((c) => c.available < c.needed)" class="warn-box mt small">
-        Some days don't have enough available technicians. Adjust days off, add team members or reduce staff per shift.
+        {{ t('team.notEnough') }}
       </div>
     </div>
 
@@ -34,12 +34,12 @@
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Username</th>
-              <th>Role</th>
-              <th>Days off</th>
-              <th>Contact</th>
-              <th>Status</th>
+              <th>{{ t('team.name') }}</th>
+              <th>{{ t('team.username') }}</th>
+              <th>{{ t('team.role') }}</th>
+              <th>{{ t('team.daysOff') }}</th>
+              <th>{{ t('team.contact') }}</th>
+              <th>{{ t('req.status') }}</th>
               <th></th>
             </tr>
           </thead>
@@ -47,24 +47,24 @@
             <tr v-for="u in sorted" :key="u.id" :class="{ inactive: u.active === false }">
               <td>
                 <strong>{{ u.name }}</strong>
-                <div v-if="u.employeeId" class="small muted">ID {{ u.employeeId }}</div>
+                <div v-if="u.employeeId" class="small muted">{{ t('team.idLabel', { id: u.employeeId }) }}</div>
               </td>
-              <td class="muted">{{ u.username }}</td>
+              <td class="muted" dir="ltr" style="text-align: start">{{ u.username }}</td>
               <td>
-                <span class="badge" :class="u.role === 'admin' ? 'badge-admin' : 'badge-tech'">{{ u.role === 'admin' ? 'Admin' : 'Technician' }}</span>
-                <div v-if="!u.inRotation" class="small muted">not in rotation</div>
+                <span class="badge" :class="u.role === 'admin' ? 'badge-admin' : 'badge-tech'">{{ u.role === 'admin' ? t('role.adminShort') : t('role.technician') }}</span>
+                <div v-if="!u.inRotation" class="small muted">{{ t('team.notInRotation') }}</div>
               </td>
               <td>
                 <span v-if="u.inRotation" class="chips">
-                  <span v-for="d in u.daysOff" :key="d" class="badge badge-off">{{ WD_SHORT[d] }}</span>
+                  <span v-for="d in u.daysOff" :key="d" class="badge badge-off">{{ wdShort()[d] }}</span>
                 </span>
                 <span v-else class="muted">—</span>
               </td>
-              <td class="small">{{ u.phone }}<div class="muted">{{ u.email }}</div></td>
-              <td><span class="badge" :class="u.active === false ? 'badge-cancelled' : 'badge-approved'">{{ u.active === false ? 'Inactive' : 'Active' }}</span></td>
+              <td class="small"><span dir="ltr">{{ u.phone }}</span><div class="muted">{{ u.email }}</div></td>
+              <td><span class="badge" :class="u.active === false ? 'badge-cancelled' : 'badge-approved'">{{ u.active === false ? t('team.inactive') : t('team.active') }}</span></td>
               <td class="actions">
-                <button class="btn btn-sm" @click="openEdit(u)">Edit</button>
-                <button v-if="u.active !== false && u.id !== auth.user.id" class="btn btn-sm btn-ghost" @click="remove(u)">Remove</button>
+                <button class="btn btn-sm" @click="openEdit(u)">{{ t('common.edit') }}</button>
+                <button v-if="u.active !== false && u.id !== auth.user.id" class="btn btn-sm btn-ghost" @click="remove(u)">{{ t('team.remove') }}</button>
               </td>
             </tr>
           </tbody>
@@ -72,34 +72,34 @@
       </div>
     </div>
 
-    <AppModal v-if="edit" :title="edit.id ? `Edit ${edit.name}` : 'Add team member'" width="620px" @close="edit = null">
+    <AppModal v-if="edit" :title="edit.id ? t('team.editTitle', { name: edit.name }) : t('team.addTitle')" width="620px" @close="edit = null">
       <div class="form-grid">
-        <label class="field">Full name <input v-model="edit.name" /></label>
-        <label class="field">Username <input v-model="edit.username" autocomplete="off" /></label>
-        <label class="field">Employee ID <input v-model="edit.employeeId" /></label>
+        <label class="field">{{ t('team.fullName') }} <input v-model="edit.name" /></label>
+        <label class="field">{{ t('team.username') }} <input v-model="edit.username" autocomplete="off" dir="ltr" /></label>
+        <label class="field">{{ t('team.employeeId') }} <input v-model="edit.employeeId" /></label>
         <label class="field">
-          Role
+          {{ t('team.role') }}
           <select v-model="edit.role">
-            <option value="technician">ECG Technician</option>
-            <option value="admin">Administrator</option>
+            <option value="technician">{{ t('role.technician') }}</option>
+            <option value="admin">{{ t('role.admin') }}</option>
           </select>
         </label>
-        <label class="field">Phone <input v-model="edit.phone" /></label>
-        <label class="field">Email <input v-model="edit.email" type="email" /></label>
+        <label class="field">{{ t('team.phone') }} <input v-model="edit.phone" dir="ltr" /></label>
+        <label class="field">{{ t('team.email') }} <input v-model="edit.email" type="email" dir="ltr" /></label>
         <label class="field">
-          {{ edit.id ? 'New password (leave blank to keep)' : 'Password' }}
-          <input v-model="edit.password" type="password" autocomplete="new-password" />
+          {{ edit.id ? t('team.newPasswordKeep') : t('login.password') }}
+          <input v-model="edit.password" type="password" autocomplete="new-password" dir="ltr" />
         </label>
       </div>
       <div class="row">
-        <label class="check"><input v-model="edit.inRotation" type="checkbox" /> Works shifts (in rotation)</label>
-        <label class="check"><input v-model="edit.active" type="checkbox" /> Active</label>
+        <label class="check"><input v-model="edit.inRotation" type="checkbox" /> {{ t('team.worksShifts') }}</label>
+        <label class="check"><input v-model="edit.active" type="checkbox" /> {{ t('team.active') }}</label>
       </div>
       <div v-if="edit.inRotation">
-        <div class="field-label">Weekly days off <span class="muted small">(pick exactly two)</span></div>
+        <div class="field-label">{{ t('my.weeklyDaysOff') }} <span class="muted small">{{ t('team.pickTwo') }}</span></div>
         <div class="chips">
           <button
-            v-for="(w, i) in WEEKDAYS"
+            v-for="(w, i) in weekdays()"
             :key="w"
             type="button"
             class="chip"
@@ -107,12 +107,12 @@
             @click="toggleDay(i)"
           >{{ w }} <span class="muted small">({{ offOn(i) }})</span></button>
         </div>
-        <p class="small muted">Numbers show how many others are already off that day.</p>
+        <p class="small muted">{{ t('team.numbersNote') }}</p>
       </div>
       <div v-if="error" class="error-box">{{ error }}</div>
       <template #footer>
-        <button class="btn" @click="edit = null">Cancel</button>
-        <button class="btn btn-primary" :disabled="busy" @click="save">Save</button>
+        <button class="btn" @click="edit = null">{{ t('common.cancel') }}</button>
+        <button class="btn btn-primary" :disabled="busy" @click="save">{{ t('common.save') }}</button>
       </template>
     </AppModal>
   </div>
@@ -123,7 +123,8 @@ import { computed, onMounted, ref } from 'vue';
 import AppModal from '../components/AppModal.vue';
 import { api } from '../api.js';
 import { auth, base, loadBase, toast } from '../store.js';
-import { WD_SHORT, WEEKDAYS } from '../utils.js';
+import { wdShort, weekdays } from '../utils.js';
+import { t } from '../i18n.js';
 
 const coverage = ref([]);
 const edit = ref(null);
@@ -167,7 +168,7 @@ async function save() {
     if (!body.password) delete body.password;
     if (id) await api(`/users/${id}`, { method: 'PUT', body });
     else await api('/users', { method: 'POST', body });
-    toast(id ? 'Team member updated' : 'Team member added');
+    toast(id ? t('team.updated') : t('team.added'));
     edit.value = null;
     await refresh();
   } catch (e) {
@@ -178,10 +179,10 @@ async function save() {
 }
 
 async function remove(u) {
-  if (!confirm(`Remove ${u.name} from the team? They will no longer be able to sign in or be scheduled.`)) return;
+  if (!confirm(t('team.confirmRemove', { name: u.name }))) return;
   try {
     await api(`/users/${u.id}`, { method: 'DELETE' });
-    toast(`${u.name} removed`);
+    toast(t('team.removed', { name: u.name }));
     await refresh();
   } catch (e) {
     toast(e.message, 'error');
@@ -189,10 +190,10 @@ async function remove(u) {
 }
 
 async function balance() {
-  if (!confirm('Reassign everyone\'s two days off (consecutive days) to spread coverage evenly across the week? Existing schedules are not changed until regenerated.')) return;
+  if (!confirm(t('team.confirmBalance'))) return;
   try {
     await api('/users/balance-days-off', { method: 'POST' });
-    toast('Days off rebalanced');
+    toast(t('team.balanced'));
     await refresh();
   } catch (e) {
     toast(e.message, 'error');
@@ -207,7 +208,7 @@ async function balance() {
 .cov .wd { font-weight: 700; font-size: 12px; text-transform: uppercase; color: var(--muted); }
 .cov .avail { font-size: 24px; font-weight: 800; color: var(--primary-dark); }
 .cov.bad .avail { color: var(--danger); }
-.actions { white-space: nowrap; text-align: right; }
+.actions { white-space: nowrap; text-align: end; }
 tr.inactive { opacity: 0.55; }
 .field-label { font-weight: 600; font-size: 13px; margin-bottom: 8px; }
 </style>

@@ -2,17 +2,14 @@
   <div class="page">
     <div class="page-head">
       <div>
-        <h1>Team Schedule</h1>
-        <p>
-          {{ base.settings.shifts.length }} shifts a day ·
-          {{ base.settings.staffPerShift }} technicians per shift · backup roster from staff on their day off
-        </p>
+        <h1>{{ t('schedule.title') }}</h1>
+        <p>{{ t('schedule.subtitle', { shifts: base.settings.shifts.length, per: base.settings.staffPerShift }) }}</p>
       </div>
       <div class="row">
         <MonthPicker v-model="month" />
         <div class="tabs">
-          <button :class="{ active: view === 'grid' }" @click="view = 'grid'">Grid</button>
-          <button :class="{ active: view === 'daily' }" @click="view = 'daily'">Daily</button>
+          <button :class="{ active: view === 'grid' }" @click="view = 'grid'">{{ t('schedule.grid') }}</button>
+          <button :class="{ active: view === 'daily' }" @click="view = 'daily'">{{ t('schedule.daily') }}</button>
         </div>
       </div>
     </div>
@@ -22,24 +19,24 @@
     <div v-if="admin" class="card mb admin-bar">
       <template v-if="schedule">
         <span class="badge" :class="schedule.published ? 'badge-approved' : 'badge-pending'">
-          {{ schedule.published ? 'Published — visible to team' : 'Draft — hidden from team' }}
+          {{ schedule.published ? t('schedule.published') : t('schedule.draft') }}
         </span>
-        <span class="small muted">Generated {{ new Date(schedule.generatedAt).toLocaleString() }}</span>
-        <span v-if="warningDays.length" class="badge badge-rejected">{{ warningDays.length }} understaffed day(s)</span>
+        <span class="small muted">{{ t('schedule.generatedAt', { at: fmtDateTime(schedule.generatedAt) }) }}</span>
+        <span v-if="warningDays.length" class="badge badge-rejected">{{ t('schedule.understaffed', { n: warningDays.length }) }}</span>
         <span class="spacer"></span>
-        <button class="btn btn-sm" @click="togglePublish">{{ schedule.published ? 'Unpublish' : 'Publish' }}</button>
-        <button class="btn btn-sm" @click="generate(true)">↻ Regenerate</button>
-        <button class="btn btn-sm" @click="printPage">⎙ Print</button>
+        <button class="btn btn-sm" @click="togglePublish">{{ schedule.published ? t('schedule.unpublish') : t('schedule.publish') }}</button>
+        <button class="btn btn-sm" @click="generate(true)">↻ {{ t('schedule.regenerate') }}</button>
+        <button class="btn btn-sm" @click="printPage">⎙ {{ t('schedule.print') }}</button>
       </template>
       <template v-else>
-        <span>No schedule for <strong>{{ monthLabel(month) }}</strong> yet.</span>
+        <span>{{ t('schedule.noneYet', { month: monthLabel(month) }) }}</span>
         <span class="spacer"></span>
-        <button class="btn btn-primary" :disabled="busy" @click="generate(false)">⚡ Generate schedule</button>
+        <button class="btn btn-primary" :disabled="busy" @click="generate(false)">⚡ {{ t('schedule.generate') }}</button>
       </template>
     </div>
 
     <div v-if="!schedule && !loading && !admin" class="card empty">
-      <p>The schedule for {{ monthLabel(month) }} hasn't been published yet.</p>
+      <p>{{ t('schedule.notPublished', { month: monthLabel(month) }) }}</p>
     </div>
 
     <!-- GRID VIEW -->
@@ -48,19 +45,19 @@
         <table class="roster">
           <thead>
             <tr>
-              <th class="sticky name-col">Technician</th>
+              <th class="sticky name-col">{{ t('schedule.technician') }}</th>
               <th
                 v-for="d in days"
                 :key="d"
                 class="day-col"
-                :class="{ weekend: [5, 6].includes(weekdayOf(d)), today: d === today, warn: schedule.days[d]?.warnings?.length, clickable: admin }"
+                :class="{ weekend: [5, 6].includes(weekdayOf(d)), today: d === today, warn: dayWarnings(d).length, clickable: admin }"
                 @click="admin && openDay(d)"
-                :title="admin ? 'Edit this day' : ''"
+                :title="admin ? t('schedule.editDay') : weekdays()[weekdayOf(d)]"
               >
-                <div>{{ WD_SHORT[weekdayOf(d)].slice(0, 2) }}</div>
+                <div>{{ wdLetter()[weekdayOf(d)] }}</div>
                 <div class="dn">{{ +d.slice(8) }}</div>
               </th>
-              <th>Total</th>
+              <th>{{ t('schedule.total') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -74,7 +71,7 @@
           </tbody>
           <tfoot>
             <tr v-for="s in base.settings.shifts" :key="s.id">
-              <td class="sticky name-col"><i class="dot" :style="{ background: s.color }"></i> {{ s.name }}</td>
+              <td class="sticky name-col"><i class="dot" :style="{ background: s.color }"></i> {{ shiftName(s) }}</td>
               <td v-for="d in days" :key="d" class="c count" :class="{ low: (schedule.days[d]?.shifts[s.id]?.length || 0) < base.settings.staffPerShift }">
                 {{ schedule.days[d]?.shifts[s.id]?.length || 0 }}
               </td>
@@ -84,11 +81,11 @@
         </table>
       </div>
       <div class="legend">
-        <span v-for="s in base.settings.shifts" :key="s.id"><b class="key" :style="{ background: s.color }">{{ s.short }}</b> {{ s.name }} {{ s.start }}–{{ s.end }}</span>
-        <span><b class="key bk">B</b> Backup (on day off)</span>
-        <span><b class="key sb">S</b> Standby</span>
-        <span><b class="key ab">L</b> Leave / excuse</span>
-        <span><b class="key of">·</b> Day off</span>
+        <span v-for="s in base.settings.shifts" :key="s.id"><b class="key" :style="{ background: s.color }">{{ shiftShort(s) }}</b> {{ shiftName(s) }} <span dir="ltr">{{ s.start }}–{{ s.end }}</span></span>
+        <span><b class="key bk">{{ t('key.backup') }}</b> {{ t('legend.backupOnDayOff') }}</span>
+        <span><b class="key sb">{{ t('key.standby') }}</b> {{ t('status.standby') }}</span>
+        <span><b class="key ab">{{ t('key.absent') }}</b> {{ t('legend.leaveExcuse') }}</span>
+        <span><b class="key of">·</b> {{ t('status.dayOff') }}</span>
       </div>
     </div>
 
@@ -97,22 +94,22 @@
       <div v-for="d in days" :key="d" class="card day-card" :class="{ today: d === today }">
         <div class="card-head">
           <h3>{{ fmtDate(d) }}</h3>
-          <button v-if="admin" class="btn btn-sm" @click="openDay(d)">Edit</button>
+          <button v-if="admin" class="btn btn-sm" @click="openDay(d)">{{ t('common.edit') }}</button>
         </div>
         <div v-for="s in base.settings.shifts" :key="s.id" class="shift-row">
           <ShiftBadge :shift="s" />
           <div class="names">
             <span v-for="id in schedule.days[d].shifts[s.id]" :key="id" :class="{ meName: id === auth.user.id }">{{ userName(id) }}</span>
-            <span v-if="!schedule.days[d].shifts[s.id].length" class="muted">— nobody —</span>
+            <span v-if="!schedule.days[d].shifts[s.id].length" class="muted">{{ t('schedule.nobody') }}</span>
           </div>
-          <div class="bk-name small" title="Backup">
+          <div class="bk-name small" :title="t('status.backup')">
             ⟲ {{ schedule.days[d].backup[s.id] ? userName(schedule.days[d].backup[s.id]) : '—' }}
           </div>
         </div>
         <div v-if="schedule.days[d].absent.length" class="small absent-line">
-          Absent: {{ schedule.days[d].absent.map(userName).join(', ') }}
+          {{ t('schedule.absent') }}: {{ schedule.days[d].absent.map(userName).join('، ') }}
         </div>
-        <div v-for="w in schedule.days[d].warnings" :key="w" class="small warn-line">⚠ {{ w }}</div>
+        <div v-for="w in dayWarnings(d)" :key="w" class="small warn-line">⚠ {{ w }}</div>
       </div>
     </div>
 
@@ -127,7 +124,8 @@ import ShiftBadge from '../components/ShiftBadge.vue';
 import DayEditor from '../components/DayEditor.vue';
 import { api } from '../api.js';
 import { auth, base, isAdmin, shiftById, toast, userName } from '../store.js';
-import { WD_SHORT, currentMonth, daysOfMonth, fmtDate, monthLabel, statusOn, todayStr, weekdayOf } from '../utils.js';
+import { t, shiftName, shiftShort } from '../i18n.js';
+import { wdLetter, weekdays, currentMonth, daysOfMonth, fmtDate, fmtDateTime, monthLabel, statusOn, todayStr, weekdayOf } from '../utils.js';
 
 const admin = isAdmin();
 const month = ref(currentMonth());
@@ -147,23 +145,33 @@ const staff = computed(() => {
   return base.users.filter((u) => ids.has(u.id));
 });
 const totals = computed(() => {
-  const t = {};
-  if (!schedule.value) return t;
-  for (const day of Object.values(schedule.value.days)) for (const id of Object.values(day.shifts).flat()) t[id] = (t[id] || 0) + 1;
-  return t;
+  const tot = {};
+  if (!schedule.value) return tot;
+  for (const day of Object.values(schedule.value.days)) for (const id of Object.values(day.shifts).flat()) tot[id] = (tot[id] || 0) + 1;
+  return tot;
 });
-const warningDays = computed(() => (schedule.value ? Object.keys(schedule.value.days).filter((d) => schedule.value.days[d].warnings?.length) : []));
+
+// Understaffing warnings, computed here so they follow the selected language.
+function dayWarnings(date) {
+  const day = schedule.value?.days?.[date];
+  if (!day) return [];
+  const need = base.settings.staffPerShift;
+  return base.settings.shifts
+    .filter((s) => (day.shifts[s.id]?.length || 0) < need)
+    .map((s) => t('schedule.shortStaff', { name: shiftName(s), have: day.shifts[s.id]?.length || 0, need }));
+}
+const warningDays = computed(() => days.value.filter((d) => dayWarnings(d).length));
 
 function cellProps(date, uid) {
   const s = statusOn(schedule.value?.days?.[date], uid);
   if (s.kind === 'shift') {
     const sh = shiftById(s.shift);
-    return { class: 'key', style: { background: sh.color }, textContent: sh.short, title: `${sh.name} ${sh.start}–${sh.end}` };
+    return { class: 'key', style: { background: sh.color }, textContent: shiftShort(sh), title: `${shiftName(sh)} ${sh.start}–${sh.end}` };
   }
-  if (s.kind === 'backup') return { class: 'key bk', textContent: 'B', title: `Backup for ${shiftById(s.shift).name}` };
-  if (s.kind === 'standby') return { class: 'key sb', textContent: 'S', title: 'Standby' };
-  if (s.kind === 'absent') return { class: 'key ab', textContent: 'L', title: 'Leave / excuse' };
-  if (s.kind === 'off') return { class: 'key of', textContent: '·', title: 'Day off' };
+  if (s.kind === 'backup') return { class: 'key bk', textContent: t('key.backup'), title: t('schedule.backupFor', { name: shiftName(shiftById(s.shift)) }) };
+  if (s.kind === 'standby') return { class: 'key sb', textContent: t('key.standby'), title: t('status.standby') };
+  if (s.kind === 'absent') return { class: 'key ab', textContent: t('key.absent'), title: t('legend.leaveExcuse') };
+  if (s.kind === 'off') return { class: 'key of', textContent: '·', title: t('status.dayOff') };
   return { textContent: '' };
 }
 
@@ -181,11 +189,11 @@ async function load() {
 watch(month, load, { immediate: true });
 
 async function generate(overwrite) {
-  if (overwrite && !confirm('Regenerate this month? All manual edits and applied replacements for this month will be rebuilt from scratch (approved leaves are respected).')) return;
+  if (overwrite && !confirm(t('schedule.confirmRegenerate'))) return;
   busy.value = true;
   try {
     schedule.value = await api(`/schedule/${month.value}/generate`, { method: 'POST', body: { overwrite, publish: schedule.value?.published } });
-    toast('Schedule generated');
+    toast(t('schedule.generatedToast'));
   } catch (e) {
     toast(e.message, 'error');
   } finally {
@@ -196,7 +204,7 @@ async function generate(overwrite) {
 async function togglePublish() {
   try {
     schedule.value = await api(`/schedule/${month.value}/publish`, { method: 'POST', body: { published: !schedule.value.published } });
-    toast(schedule.value.published ? 'Schedule published to the team' : 'Schedule unpublished');
+    toast(schedule.value.published ? t('schedule.publishedToast') : t('schedule.unpublishedToast'));
   } catch (e) {
     toast(e.message, 'error');
   }
@@ -206,7 +214,7 @@ const openDay = (d) => (editing.value = d);
 function onSaved(day) {
   schedule.value.days[editing.value] = day;
   editing.value = null;
-  toast('Day updated');
+  toast(t('schedule.dayUpdated'));
 }
 const printPage = () => window.print();
 </script>
@@ -216,10 +224,10 @@ const printPage = () => window.print();
 .grid-card { padding: 0; overflow: hidden; }
 .roster { font-size: 12px; border-collapse: separate; border-spacing: 0; }
 .roster th, .roster td { padding: 4px 2px; text-align: center; border-bottom: 1px solid var(--border); }
-.roster .name-col { text-align: left; padding: 6px 12px; min-width: 160px; white-space: nowrap; font-weight: 600; }
-.sticky { position: sticky; left: 0; background: #fff; z-index: 1; border-right: 1px solid var(--border); }
+.roster .name-col { text-align: start; padding: 6px 12px; min-width: 160px; white-space: nowrap; font-weight: 600; }
+.sticky { position: sticky; inset-inline-start: 0; background: #fff; z-index: 1; border-inline-end: 1px solid var(--border); }
 thead .sticky { background: var(--surface-2); }
-.day-col { min-width: 30px; font-size: 10px; line-height: 1.2; }
+.day-col { min-width: 30px; font-size: 11px; line-height: 1.2; }
 .day-col .dn { font-size: 13px; color: var(--text); }
 .day-col.weekend { background: #fdf2f8; }
 .day-col.today, td.today { background: #fff1f2 !important; }
@@ -239,7 +247,7 @@ tfoot .sticky { background: var(--surface-2); }
 :deep(.key.ab), .key.ab { background: #ffe4e6; color: #be123c; }
 :deep(.key.of), .key.of { background: transparent; color: #94a3b8; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
-.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend > span { display: inline-flex; align-items: center; gap: 6px; }
 
 .daily { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
 .day-card.today { box-shadow: 0 0 0 2px var(--heart); }

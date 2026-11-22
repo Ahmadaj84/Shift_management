@@ -1,5 +1,5 @@
 <template>
-  <svg :width="size" :height="size" viewBox="0 0 64 64" class="ecg-logo" aria-label="ECG logo">
+  <svg :width="size" :height="size" viewBox="0 0 64 64" class="ecg-logo" aria-label="ECG">
     <path
       d="M32 56 C 10 40, 4 28, 8 18 C 12 8, 26 8, 32 18 C 38 8, 52 8, 56 18 C 60 28, 54 40, 32 56 Z"
       fill="#e11d48"

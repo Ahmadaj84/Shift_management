@@ -2,8 +2,8 @@
   <div class="page">
     <div class="page-head">
       <div>
-        <h1>My Schedule</h1>
-        <p>Your shifts, days off and backup (standby) duties for the month.</p>
+        <h1>{{ t('my.title') }}</h1>
+        <p>{{ t('my.subtitle') }}</p>
       </div>
       <MonthPicker v-model="month" />
     </div>
@@ -12,25 +12,25 @@
 
     <div class="grid grid-4 mb">
       <div v-for="s in base.settings.shifts" :key="s.id" class="card stat">
-        <span class="label">{{ s.name }} shifts</span>
+        <span class="label">{{ t('my.shiftsOf', { name: shiftName(s) }) }}</span>
         <span class="value" :style="{ color: s.color }">{{ counts[s.id] || 0 }}</span>
-        <span class="small muted">{{ s.start }} – {{ s.end }}</span>
+        <span class="small muted" dir="ltr">{{ s.start }} – {{ s.end }}</span>
       </div>
       <div class="card stat">
-        <span class="label">Backup duty</span>
+        <span class="label">{{ t('my.backupDuty') }}</span>
         <span class="value" style="color: #0d9488">{{ counts.backup || 0 }}</span>
-        <span class="small muted">You may be called in</span>
+        <span class="small muted">{{ t('my.mayBeCalled') }}</span>
       </div>
     </div>
 
     <div v-if="!schedule && !loading" class="card empty">
       <EcgLine :height="40" :beats="3" color="#cbd5e1" :animated="false" />
-      <p>The schedule for {{ monthLabel(month) }} hasn't been published yet.</p>
+      <p>{{ t('schedule.notPublished', { month: monthLabel(month) }) }}</p>
     </div>
 
     <div v-else class="card">
       <div class="calendar">
-        <div v-for="w in WD_SHORT" :key="w" class="wd">{{ w }}</div>
+        <div v-for="w in wdShort()" :key="w" class="wd">{{ w }}</div>
         <div v-for="n in lead" :key="'b' + n" class="cell blank"></div>
         <div
           v-for="date in days"
@@ -41,41 +41,41 @@
         >
           <div class="num">{{ +date.slice(8) }}</div>
           <template v-if="status(date).kind === 'shift'">
-            <div class="what" :style="{ color: shiftById(status(date).shift).color }">{{ shiftById(status(date).shift).name }}</div>
-            <div class="small muted">{{ shiftById(status(date).shift).start }}–{{ shiftById(status(date).shift).end }}</div>
+            <div class="what" :style="{ color: shiftById(status(date).shift).color }">{{ shiftName(shiftById(status(date).shift)) }}</div>
+            <div class="small muted" dir="ltr">{{ shiftById(status(date).shift).start }}–{{ shiftById(status(date).shift).end }}</div>
           </template>
           <div v-else-if="status(date).kind === 'backup'" class="what backup">
-            Backup<br /><span class="small">{{ shiftById(status(date).shift).name }}</span>
+            {{ t('status.backup') }}<br /><span class="small">{{ shiftName(shiftById(status(date).shift)) }}</span>
           </div>
-          <div v-else-if="status(date).kind === 'off'" class="what off">Day off</div>
-          <div v-else-if="status(date).kind === 'standby'" class="what backup">Standby</div>
+          <div v-else-if="status(date).kind === 'off'" class="what off">{{ t('status.dayOff') }}</div>
+          <div v-else-if="status(date).kind === 'standby'" class="what backup">{{ t('status.standby') }}</div>
           <div v-else-if="status(date).kind === 'absent'" class="what absent">{{ absentLabel(date) }}</div>
           <button
             v-if="status(date).kind === 'shift' && date >= today && !hasRequest(date)"
             class="req-btn"
-            title="Request an excuse for this day"
+            :title="t('my.requestExcuseTitle')"
             @click="$router.push({ path: '/requests', query: { type: 'excuse', date } })"
-          >+ Excuse</button>
-          <span v-if="hasRequest(date) === 'pending'" class="badge badge-pending small pend">Pending</span>
+          >{{ t('my.plusExcuse') }}</button>
+          <span v-if="hasRequest(date) === 'pending'" class="badge badge-pending small pend">{{ t('status.pending') }}</span>
         </div>
       </div>
 
       <div class="legend">
-        <span v-for="s in base.settings.shifts" :key="s.id"><i class="dot" :style="{ background: s.color }"></i> {{ s.name }}</span>
-        <span><i class="dot" style="background: #14b8a6"></i> Backup / standby</span>
-        <span><i class="dot" style="background: #94a3b8"></i> Day off</span>
-        <span><i class="dot" style="background: #e11d48"></i> Leave / excuse</span>
+        <span v-for="s in base.settings.shifts" :key="s.id"><i class="dot" :style="{ background: s.color }"></i> {{ shiftName(s) }}</span>
+        <span><i class="dot" style="background: #14b8a6"></i> {{ t('legend.backupStandby') }}</span>
+        <span><i class="dot" style="background: #94a3b8"></i> {{ t('status.dayOff') }}</span>
+        <span><i class="dot" style="background: #e11d48"></i> {{ t('legend.leaveExcuse') }}</span>
       </div>
     </div>
 
     <div class="card mt">
       <div class="card-head">
-        <h2>My weekly days off</h2>
+        <h2>{{ t('my.weeklyDaysOff') }}</h2>
       </div>
       <div class="chips">
-        <span v-for="(w, i) in WEEKDAYS" :key="w" class="chip" :class="{ on: me?.daysOff?.includes(i) }">{{ w }}</span>
+        <span v-for="(w, i) in weekdays()" :key="w" class="chip" :class="{ on: me?.daysOff?.includes(i) }">{{ w }}</span>
       </div>
-      <p class="small muted">Days off are set by your administrator. On a day off you may be listed as a backup.</p>
+      <p class="small muted">{{ t('my.daysOffNote') }}</p>
     </div>
   </div>
 </template>
@@ -86,7 +86,8 @@ import MonthPicker from '../components/MonthPicker.vue';
 import EcgLine from '../components/EcgLine.vue';
 import { api } from '../api.js';
 import { auth, base, shiftById } from '../store.js';
-import { WD_SHORT, WEEKDAYS, currentMonth, daysOfMonth, monthLabel, statusOn, todayStr, weekdayOf } from '../utils.js';
+import { t, shiftName } from '../i18n.js';
+import { wdShort, weekdays, currentMonth, daysOfMonth, monthLabel, statusOn, todayStr, weekdayOf } from '../utils.js';
 
 const month = ref(currentMonth());
 const schedule = ref(null);
@@ -117,7 +118,7 @@ function requestOn(date) {
   );
 }
 const hasRequest = (date) => requestOn(date)?.status;
-const absentLabel = (date) => (requestOn(date)?.type === 'excuse' ? 'Excused' : 'On leave');
+const absentLabel = (date) => (requestOn(date)?.type === 'excuse' ? t('status.excused') : t('status.onLeave'));
 
 function cellStyle(date) {
   const s = status(date);
@@ -144,7 +145,7 @@ watch(month, load, { immediate: true });
 
 <style scoped>
 .calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
-.wd { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; padding: 4px 0; }
+.wd { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 4px 0; }
 .cell { min-height: 96px; border: 1px solid var(--border); border-radius: 10px; padding: 8px; position: relative; background: #fff; display: flex; flex-direction: column; gap: 2px; }
 .cell.blank { border: none; background: transparent; }
 .cell.today { box-shadow: 0 0 0 2px var(--heart); }
@@ -156,9 +157,9 @@ watch(month, load, { immediate: true });
 .what.off { color: var(--muted); font-weight: 600; }
 .what.backup { color: #0f766e; }
 .what.absent { color: var(--heart); }
-.req-btn { position: absolute; bottom: 6px; right: 6px; font-size: 11px; border: 1px dashed var(--border); background: #fff; border-radius: 6px; padding: 1px 6px; cursor: pointer; color: var(--muted); opacity: 0; transition: opacity 0.15s; }
+.req-btn { position: absolute; bottom: 6px; inset-inline-end: 6px; font: inherit; font-size: 11px; border: 1px dashed var(--border); background: #fff; border-radius: 6px; padding: 1px 6px; cursor: pointer; color: var(--muted); opacity: 0; transition: opacity 0.15s; }
 .cell:hover .req-btn { opacity: 1; }
-.pend { position: absolute; bottom: 6px; right: 6px; }
+.pend { position: absolute; bottom: 6px; inset-inline-end: 6px; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; color: var(--muted); font-size: 12px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 @media (max-width: 720px) {

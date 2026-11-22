@@ -4,7 +4,7 @@
       <div class="modal" :style="{ maxWidth: width }" role="dialog" aria-modal="true">
         <header>
           <h2>{{ title }}</h2>
-          <button class="icon-btn" @click="$emit('close')" aria-label="Close">✕</button>
+          <button class="icon-btn" @click="$emit('close')" :aria-label="t('common.close')">✕</button>
         </header>
         <div class="body"><slot /></div>
         <footer v-if="$slots.footer"><slot name="footer" /></footer>
@@ -15,6 +15,7 @@
 
 <script setup>
 import { onMounted, onBeforeUnmount } from 'vue';
+import { t } from '../i18n.js';
 defineProps({ title: String, width: { type: String, default: '560px' } });
 const emit = defineEmits(['close']);
 const onKey = (e) => e.key === 'Escape' && emit('close');

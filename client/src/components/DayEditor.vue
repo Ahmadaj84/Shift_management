@@ -1,9 +1,9 @@
 <template>
-  <AppModal :title="`Edit ${fmtDate(date)}`" width="760px" @close="$emit('close')">
+  <AppModal :title="t('dayEditor.title', { date: fmtDate(date) })" width="760px" @close="$emit('close')">
     <div v-for="s in base.settings.shifts" :key="s.id" class="shift-block">
       <div class="row">
         <ShiftBadge :shift="s" />
-        <span class="small muted">{{ s.start }}–{{ s.end }}</span>
+        <span class="small muted" dir="ltr">{{ s.start }}–{{ s.end }}</span>
         <span class="spacer"></span>
         <span class="small" :class="{ low: draft.shifts[s.id].length < base.settings.staffPerShift }">
           {{ draft.shifts[s.id].length }}/{{ base.settings.staffPerShift }}
@@ -17,35 +17,35 @@
           class="chip"
           :class="{ on: draft.shifts[s.id].includes(u.id), offday: isOffDay(u) }"
           :disabled="busyElsewhere(u.id, s.id) || isAbsent(u.id)"
-          :title="isAbsent(u.id) ? 'On approved leave/excuse' : isOffDay(u) ? 'Regular day off' : ''"
+          :title="isAbsent(u.id) ? t('dayEditor.onLeave') : isOffDay(u) ? t('dayEditor.regularOff') : ''"
           @click="toggle(s.id, u.id)"
         >
           {{ u.name }}
         </button>
       </div>
       <label class="field backup">
-        Backup for {{ s.name }}
+        {{ t('schedule.backupFor', { name: shiftName(s) }) }}
         <select v-model="draft.backup[s.id]">
-          <option :value="null">— none —</option>
-          <option v-for="u in backupOptions" :key="u.id" :value="u.id">{{ u.name }}{{ isOffDay(u) ? ' (day off)' : '' }}</option>
+          <option :value="null">{{ t('common.none') }}</option>
+          <option v-for="u in backupOptions" :key="u.id" :value="u.id">{{ u.name }}{{ isOffDay(u) ? ` (${t('status.dayOff')})` : '' }}</option>
         </select>
       </label>
     </div>
     <div v-if="day.changes?.length" class="info-box small">
-      <strong>Change log</strong>
+      <strong>{{ t('dayEditor.changeLog') }}</strong>
       <div v-for="(c, i) in day.changes" :key="i">
         <template v-if="c.type === 'replacement'">
-          {{ userName(c.absent) }} → {{ c.replacement ? userName(c.replacement) : 'no replacement found' }} ({{ shiftById(c.shift)?.name }})
+          {{ userName(c.absent) }} {{ t('arrow') }} {{ c.replacement ? userName(c.replacement) : t('dayEditor.noReplacement') }} ({{ shiftName(shiftById(c.shift)) }})
         </template>
-        <template v-else>Manually edited by {{ userName(c.by) }}</template>
-        <span class="muted"> · {{ new Date(c.at).toLocaleString() }}</span>
+        <template v-else>{{ t('dayEditor.editedBy', { name: userName(c.by) }) }}</template>
+        <span class="muted"> · {{ fmtDateTime(c.at) }}</span>
       </div>
     </div>
     <div v-if="error" class="error-box">{{ error }}</div>
     <template #footer>
-      <span class="small muted legend">Dashed = person's regular day off</span>
-      <button class="btn" @click="$emit('close')">Cancel</button>
-      <button class="btn btn-primary" :disabled="busy" @click="save">Save day</button>
+      <span class="small muted legend">{{ t('dayEditor.dashedNote') }}</span>
+      <button class="btn" @click="$emit('close')">{{ t('common.cancel') }}</button>
+      <button class="btn btn-primary" :disabled="busy" @click="save">{{ t('dayEditor.save') }}</button>
     </template>
   </AppModal>
 </template>
@@ -56,7 +56,8 @@ import AppModal from './AppModal.vue';
 import ShiftBadge from './ShiftBadge.vue';
 import { api } from '../api.js';
 import { base, shiftById, userName } from '../store.js';
-import { fmtDate, weekdayOf } from '../utils.js';
+import { fmtDate, fmtDateTime, weekdayOf } from '../utils.js';
+import { t, shiftName } from '../i18n.js';
 
 const props = defineProps({ date: String, day: Object });
 const emit = defineEmits(['close', 'saved']);
@@ -101,5 +102,5 @@ async function save() {
 .chip.offday:not(.on) { border-style: dashed; color: var(--muted); }
 .low { color: var(--danger); font-weight: 700; }
 .backup { max-width: 320px; font-weight: 500; }
-.legend { margin-right: auto; }
+.legend { margin-inline-end: auto; }
 </style>

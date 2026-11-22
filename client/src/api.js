@@ -1,4 +1,5 @@
 import { auth, logout } from './store.js';
+import { translateError } from './i18n.js';
 
 export async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch(`/api${path}`, {
@@ -11,6 +12,6 @@ export async function api(path, { method = 'GET', body } = {}) {
   });
   const data = await res.json().catch(() => null);
   if (res.status === 401 && auth.token) logout();
-  if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+  if (!res.ok) throw new Error(translateError(data?.error || `Request failed (${res.status})`));
   return data;
 }

@@ -1,6 +1,9 @@
-export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-export const WD_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+import { t, dateLocale } from './i18n.js';
+
+// Functions (not constants) so they follow the selected language.
+export const weekdays = () => t('weekdays');
+export const wdShort = () => t('weekdaysShort');
+export const wdLetter = () => t('weekdaysLetter');
 
 const pad = (n) => String(n).padStart(2, '0');
 export const todayStr = () => {
@@ -16,7 +19,8 @@ export function shiftMonth(ym, delta) {
   while (m > 12) { m -= 12; y++; }
   return `${y}-${pad(m)}`;
 }
-export const monthLabel = (ym) => `${MONTHS[+ym.slice(5) - 1]} ${ym.slice(0, 4)}`;
+export const monthLabel = (ym) =>
+  new Intl.DateTimeFormat(dateLocale(), { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(ym + '-01T00:00:00Z'));
 export const weekdayOf = (ds) => new Date(ds + 'T00:00:00Z').getUTCDay();
 
 export function daysOfMonth(ym) {
@@ -25,11 +29,12 @@ export function daysOfMonth(ym) {
   return Array.from({ length: n }, (_, i) => `${ym}-${pad(i + 1)}`);
 }
 
-export function fmtDate(ds) {
+export function fmtDate(ds, opts = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) {
   if (!ds) return '';
-  const d = new Date(ds + 'T00:00:00Z');
-  return `${WD_SHORT[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCFullYear()}`;
+  return new Intl.DateTimeFormat(dateLocale(), { ...opts, timeZone: 'UTC' }).format(new Date(ds + 'T00:00:00Z'));
 }
+export const fmtShortDate = (ds) => fmtDate(ds, { day: 'numeric', month: 'short' });
+export const fmtDateTime = (iso) => new Date(iso).toLocaleString(dateLocale(), { dateStyle: 'medium', timeStyle: 'short' });
 
 export function daysBetween(a, b) {
   return Math.round((Date.parse(b) - Date.parse(a)) / 86400000) + 1;

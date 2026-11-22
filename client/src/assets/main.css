@@ -27,7 +27,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', 'Inter', system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 14px;
@@ -107,7 +107,7 @@ textarea { resize: vertical; min-height: 70px; }
 /* Tables */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+th, td { padding: 10px 12px; text-align: start; border-bottom: 1px solid var(--border); vertical-align: middle; }
 th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; background: var(--surface-2); }
 tr:last-child td { border-bottom: none; }
 
@@ -137,4 +137,13 @@ tr:last-child td { border-bottom: none; }
 
 @media (max-width: 720px) {
   .page { padding: 16px; }
+}
+
+/* Arabic: uppercase/letter-spacing don't apply and break letter joining */
+[dir='rtl'] th, [dir='rtl'] .stat .label, [dir='rtl'] .nav-label { letter-spacing: 0; text-transform: none; }
+[dir='rtl'] body { font-size: 15px; }
+input[type='date'], input[type='time'] { text-align: start; }
+[dir='rtl'] .sidebar nav a.router-link-active { box-shadow: inset -3px 0 0 var(--trace); }
+@media (max-width: 900px) {
+  [dir='rtl'] .shell:not(.open) .sidebar { transform: translateX(100%); }
 }
