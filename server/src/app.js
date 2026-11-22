@@ -13,6 +13,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function createApp() {
   const app = express();
+  // Behind a hosting proxy (Render, etc.) so req.ip is the real client IP
+  app.set('trust proxy', 1);
+  app.disable('x-powered-by');
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/health', (req, res) => res.json({ ok: true }));

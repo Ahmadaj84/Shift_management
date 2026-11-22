@@ -284,6 +284,7 @@ export default {
     'Only pending requests can be cancelled': 'يمكن إلغاء الطلبات قيد المراجعة فقط',
     'Staff per shift must be 1-20': 'عدد الفنيين في المناوبة يجب أن يكون من 1 إلى 20',
     'Times must be HH:MM': 'صيغة الوقت يجب أن تكون HH:MM',
+    'Too many failed attempts. Try again later.': 'محاولات فاشلة كثيرة. حاول لاحقاً.',
     'Not found': 'غير موجود',
     'Server error': 'خطأ في الخادم',
   },

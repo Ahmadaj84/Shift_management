@@ -38,10 +38,16 @@ function makeUser(id, name, username, password, role, extra = {}) {
 }
 
 export function buildSeedData() {
-  const users = [makeUser('u1', 'مدير القسم', 'admin', 'admin123', 'admin')];
-  TEAM.forEach((name, i) => {
-    users.push(makeUser(`u${i + 2}`, name, `tech${i + 1}`, 'tech123', 'technician'));
-  });
+  // In production set ADMIN_PASSWORD (initial admin password) and SEED_DEMO_DATA=false
+  // so no well-known demo accounts exist on a public server.
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const withDemoTeam = process.env.SEED_DEMO_DATA !== 'false';
+  const users = [makeUser('u1', 'مدير القسم', 'admin', adminPassword, 'admin')];
+  if (withDemoTeam) {
+    TEAM.forEach((name, i) => {
+      users.push(makeUser(`u${i + 2}`, name, `tech${i + 1}`, 'tech123', 'technician'));
+    });
+  }
   balanceDaysOff(users.filter((u) => u.inRotation));
   return {
     settings: structuredClone(DEFAULT_SETTINGS),
