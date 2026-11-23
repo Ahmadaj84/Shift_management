@@ -12,6 +12,7 @@ Shift scheduling web app for an ECG technician team.
 - Dashboard: who is on duty today/tomorrow, backups, absences, pending requests
 - Team: add/edit/remove technicians, set each person's **two weekly days off**, weekly coverage check, one-click **auto-balance days off**
 - Team Schedule: **generate** a monthly roster (3 shifts × 3 technicians by default), or start from an **empty schedule**; publish/unpublish; print
+- **Export to Excel** (تصدير إلى Excel): a colour-coded `.xlsx` with two sheets: the monthly grid with totals and a legend, and a day-by-day list of names, backups and absences. It is right-to-left in Arabic. Technicians can export published months.
 - **Drag & drop editor** (سحب وإفلات): a week board of shifts × days. Drag names between shifts, days and backup slots, from the team list, or onto "Not assigned" to remove them. Hold Ctrl to copy. On touch screens, click a name and then a slot. Every change is saved at once and can be undone.
 - **Conflict checks** shown right after each drop: double booking, working on leave or on a day off, night shift followed by a morning shift, a backup who is also working, understaffed shifts, and more than 5 working days in a week. Publishing a schedule that still has conflicts asks for confirmation.
 - Requests: approve or reject **leave** (date range) and **day excuses**. On approval, the system pulls a **backup** (someone on their day off) into the shift. The admin can choose who.

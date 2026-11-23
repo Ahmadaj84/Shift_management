@@ -107,6 +107,8 @@ export default {
   'schedule.unpublishedToast': 'Schedule unpublished',
   'schedule.dayUpdated': 'Day updated',
 
+  'schedule.exportExcel': 'Export to Excel',
+  'schedule.exporting': 'Exporting…',
   'schedule.board': 'Drag & drop',
   'schedule.editBoard': 'Edit with drag & drop',
   'schedule.createEmpty': 'Empty schedule (fill by hand)',

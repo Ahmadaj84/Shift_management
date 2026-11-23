@@ -3,6 +3,7 @@ import { db, save } from '../db.js';
 import { requireAdmin } from '../auth.js';
 import { isMonth, isDate, monthOf, daysOfMonth } from '../dates.js';
 import { absenceFor, generateMonth, replacementCandidates } from '../scheduler.js';
+import { buildScheduleWorkbook } from '../export.js';
 
 const r = Router();
 
@@ -12,6 +13,27 @@ r.get('/:ym', (req, res) => {
   const schedule = db().schedules[ym] || null;
   if (schedule && !schedule.published && req.user.role !== 'admin') return res.json(null);
   res.json(schedule);
+});
+
+// Excel export (admins: any month; technicians: published months only)
+r.get('/:ym/export', async (req, res, next) => {
+  try {
+    const { ym } = req.params;
+    if (!isMonth(ym)) return res.status(400).json({ error: 'Month must be YYYY-MM' });
+    const d = db();
+    const schedule = d.schedules[ym];
+    if (!schedule || (!schedule.published && req.user.role !== 'admin')) {
+      return res.status(404).json({ error: 'No schedule for this month' });
+    }
+    const lang = req.query.lang === 'en' ? 'en' : 'ar';
+    const wb = await buildScheduleWorkbook(d, ym, lang);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="ecg-schedule-${ym}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (e) {
+    next(e);
+  }
 });
 
 r.post('/:ym/generate', requireAdmin, (req, res) => {

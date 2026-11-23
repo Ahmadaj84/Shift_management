@@ -6,6 +6,9 @@
         <p>{{ t('schedule.subtitle', { shifts: base.settings.shifts.length, per: base.settings.staffPerShift }) }}</p>
       </div>
       <div class="row">
+        <button v-if="schedule" class="btn btn-excel" :disabled="exporting" @click="exportExcel">
+          <span class="xl">X</span> {{ exporting ? t('schedule.exporting') : t('schedule.exportExcel') }}
+        </button>
         <MonthPicker v-model="month" />
         <div class="tabs">
           <button :class="{ active: view === 'grid' }" @click="view = 'grid'">{{ t('schedule.grid') }}</button>
@@ -130,9 +133,9 @@ import ShiftBadge from '../components/ShiftBadge.vue';
 import DayEditor from '../components/DayEditor.vue';
 import ScheduleBoard from '../components/ScheduleBoard.vue';
 import { findConflicts, indexConflicts } from '../conflicts.js';
-import { api } from '../api.js';
+import { api, download } from '../api.js';
 import { auth, base, isAdmin, shiftById, toast, userName } from '../store.js';
-import { t, shiftName, shiftShort } from '../i18n.js';
+import { t, i18n, shiftName, shiftShort } from '../i18n.js';
 import { wdLetter, weekdays, currentMonth, daysOfMonth, fmtDate, fmtDateTime, monthLabel, statusOn, todayStr, weekdayOf } from '../utils.js';
 
 const admin = isAdmin();
@@ -245,9 +248,24 @@ function onSaved(day) {
   toast(t('schedule.dayUpdated'));
 }
 const printPage = () => window.print();
+
+const exporting = ref(false);
+async function exportExcel() {
+  exporting.value = true;
+  try {
+    await download(`/schedule/${month.value}/export?lang=${i18n.locale}`, `ecg-schedule-${month.value}.xlsx`);
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    exporting.value = false;
+  }
+}
 </script>
 
 <style scoped>
+.btn-excel { background: #107c41; border-color: #107c41; color: #fff; }
+.btn-excel:hover { background: #0b5e31; }
+.xl { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; background: #fff; color: #107c41; font-weight: 900; font-size: 12px; }
 .admin-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; }
 .grid-card { padding: 0; overflow: hidden; }
 .roster { font-size: 12px; border-collapse: separate; border-spacing: 0; }

@@ -107,6 +107,8 @@ export default {
   'schedule.unpublishedToast': 'تم إلغاء نشر الجدول',
   'schedule.dayUpdated': 'تم تحديث اليوم',
 
+  'schedule.exportExcel': 'تصدير إلى Excel',
+  'schedule.exporting': 'جارٍ التصدير…',
   'schedule.board': 'سحب وإفلات',
   'schedule.editBoard': 'تعديل بالسحب والإفلات',
   'schedule.createEmpty': 'جدول فارغ (تعبئة يدوية)',
