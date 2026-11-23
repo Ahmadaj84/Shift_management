@@ -10,6 +10,7 @@
         <div class="tabs">
           <button :class="{ active: view === 'grid' }" @click="view = 'grid'">{{ t('schedule.grid') }}</button>
           <button :class="{ active: view === 'daily' }" @click="view = 'daily'">{{ t('schedule.daily') }}</button>
+          <button v-if="admin && schedule" :class="{ active: view === 'board' }" @click="view = 'board'">✥ {{ t('schedule.board') }}</button>
         </div>
       </div>
     </div>
@@ -23,14 +24,17 @@
         </span>
         <span class="small muted">{{ t('schedule.generatedAt', { at: fmtDateTime(schedule.generatedAt) }) }}</span>
         <span v-if="warningDays.length" class="badge badge-rejected">{{ t('schedule.understaffed', { n: warningDays.length }) }}</span>
+        <button v-if="conflictErrors.length" class="badge badge-rejected linkish" @click="view = 'board'">⛔ {{ t('board.errors', { n: conflictErrors.length }) }}</button>
         <span class="spacer"></span>
         <button class="btn btn-sm" @click="togglePublish">{{ schedule.published ? t('schedule.unpublish') : t('schedule.publish') }}</button>
+        <button v-if="view !== 'board'" class="btn btn-sm btn-primary" @click="view = 'board'">✥ {{ t('schedule.editBoard') }}</button>
         <button class="btn btn-sm" @click="generate(true)">↻ {{ t('schedule.regenerate') }}</button>
         <button class="btn btn-sm" @click="printPage">⎙ {{ t('schedule.print') }}</button>
       </template>
       <template v-else>
         <span>{{ t('schedule.noneYet', { month: monthLabel(month) }) }}</span>
         <span class="spacer"></span>
+        <button class="btn" :disabled="busy" @click="createEmpty">✥ {{ t('schedule.createEmpty') }}</button>
         <button class="btn btn-primary" :disabled="busy" @click="generate(false)">⚡ {{ t('schedule.generate') }}</button>
       </template>
     </div>
@@ -63,7 +67,7 @@
           <tbody>
             <tr v-for="u in staff" :key="u.id" :class="{ me: u.id === auth.user.id }">
               <td class="sticky name-col">{{ u.name }}</td>
-              <td v-for="d in days" :key="d" class="c" :class="{ today: d === today }" @click="admin && openDay(d)">
+              <td v-for="d in days" :key="d" class="c" :class="{ today: d === today, conflict: conflictIndex.byUserDate.has(`${d}|${u.id}`), clickable: admin }" :title="admin ? t('schedule.editDay') : ''" @click="admin && openDay(d)">
                 <span v-bind="cellProps(d, u.id)"></span>
               </td>
               <td class="total">{{ totals[u.id] || 0 }}</td>
@@ -113,6 +117,8 @@
       </div>
     </div>
 
+    <ScheduleBoard v-if="schedule && view === 'board' && admin" :key="schedule.generatedAt" :schedule="schedule" :month="month" />
+
     <DayEditor v-if="editing" :date="editing" :day="schedule.days[editing]" @close="editing = null" @saved="onSaved" />
   </div>
 </template>
@@ -122,6 +128,8 @@ import { computed, ref, watch } from 'vue';
 import MonthPicker from '../components/MonthPicker.vue';
 import ShiftBadge from '../components/ShiftBadge.vue';
 import DayEditor from '../components/DayEditor.vue';
+import ScheduleBoard from '../components/ScheduleBoard.vue';
+import { findConflicts, indexConflicts } from '../conflicts.js';
 import { api } from '../api.js';
 import { auth, base, isAdmin, shiftById, toast, userName } from '../store.js';
 import { t, shiftName, shiftShort } from '../i18n.js';
@@ -161,6 +169,9 @@ function dayWarnings(date) {
     .map((s) => t('schedule.shortStaff', { name: shiftName(s), have: day.shifts[s.id]?.length || 0, need }));
 }
 const warningDays = computed(() => days.value.filter((d) => dayWarnings(d).length));
+const conflictList = computed(() => (schedule.value ? findConflicts(schedule.value, base.users, base.settings) : []));
+const conflictIndex = computed(() => indexConflicts(conflictList.value.filter((c) => c.type !== 'understaffed')));
+const conflictErrors = computed(() => conflictList.value.filter((c) => c.severity === 'error'));
 
 function cellProps(date, uid) {
   const s = statusOn(schedule.value?.days?.[date], uid);
@@ -186,7 +197,10 @@ async function load() {
     loading.value = false;
   }
 }
-watch(month, load, { immediate: true });
+watch(month, () => {
+  if (view.value === 'board') view.value = 'grid';
+  load();
+}, { immediate: true });
 
 async function generate(overwrite) {
   if (overwrite && !confirm(t('schedule.confirmRegenerate'))) return;
@@ -201,7 +215,21 @@ async function generate(overwrite) {
   }
 }
 
+async function createEmpty() {
+  busy.value = true;
+  try {
+    schedule.value = await api(`/schedule/${month.value}/create-empty`, { method: 'POST', body: {} });
+    view.value = 'board';
+    toast(t('schedule.emptyCreated'));
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    busy.value = false;
+  }
+}
+
 async function togglePublish() {
+  if (!schedule.value.published && conflictErrors.value.length && !confirm(t('schedule.confirmPublishConflicts', { n: conflictErrors.value.length }))) return;
   try {
     schedule.value = await api(`/schedule/${month.value}/publish`, { method: 'POST', body: { published: !schedule.value.published } });
     toast(schedule.value.published ? t('schedule.publishedToast') : t('schedule.unpublishedToast'));
@@ -235,6 +263,9 @@ thead .sticky { background: var(--surface-2); }
 .day-col.clickable { cursor: pointer; }
 .day-col.clickable:hover { background: #ecfdf5; }
 td.c { cursor: default; }
+td.c.clickable { cursor: pointer; }
+td.c.conflict { box-shadow: inset 0 0 0 2px #f87171; background: #fef2f2; }
+.linkish { border: none; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
 tr.me td { background: #f0fdf4; }
 tr.me .sticky { background: #f0fdf4; }
 .total { font-weight: 700; }

@@ -56,12 +56,12 @@ import AppModal from './AppModal.vue';
 import ShiftBadge from './ShiftBadge.vue';
 import { api } from '../api.js';
 import { base, shiftById, userName } from '../store.js';
-import { fmtDate, fmtDateTime, weekdayOf } from '../utils.js';
+import { clone, fmtDate, fmtDateTime, weekdayOf } from '../utils.js';
 import { t, shiftName } from '../i18n.js';
 
 const props = defineProps({ date: String, day: Object });
 const emit = defineEmits(['close', 'saved']);
-const draft = reactive(structuredClone({ shifts: props.day.shifts, backup: props.day.backup }));
+const draft = reactive(clone({ shifts: props.day.shifts, backup: props.day.backup }));
 const busy = ref(false);
 const error = ref('');
 

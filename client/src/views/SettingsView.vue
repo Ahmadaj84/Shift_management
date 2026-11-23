@@ -44,10 +44,11 @@ import { ref } from 'vue';
 import { api } from '../api.js';
 import { base, toast } from '../store.js';
 import { t, shiftName, shiftShort, deptName } from '../i18n.js';
+import { clone } from '../utils.js';
 
 // Show built-in names in the current language so they can be edited naturally.
 const localized = (s) => ({
-  ...structuredClone(s),
+  ...clone(s),
   departmentName: deptName(s.departmentName),
   shifts: s.shifts.map((x) => ({ ...x, name: shiftName(x), short: shiftShort(x) })),
 });

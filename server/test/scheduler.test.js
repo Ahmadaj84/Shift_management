@@ -76,3 +76,20 @@ test('many months stay fully staffed (team sizes 13-17)', () => {
     }
   }
 });
+
+test('generated schedules have no conflicts; edits are detected', async () => {
+  const { findConflicts } = await import('../../client/src/conflicts.js');
+  const d = fresh();
+  const s = generateMonth(d, '2026-12');
+  const found = findConflicts(s, d.users, d.settings);
+  assert.deepEqual(found, [], JSON.stringify(found.slice(0, 3)));
+
+  // put a night-shift person on the next morning, and double-book someone
+  const night = s.days['2026-12-09'].shifts.night[0];
+  s.days['2026-12-10'].shifts.morning.push(night);
+  const someone = s.days['2026-12-11'].shifts.evening[0];
+  s.days['2026-12-11'].shifts.morning.push(someone);
+  const types = findConflicts(s, d.users, d.settings).map((c) => c.type);
+  assert.ok(types.includes('nightMorning'));
+  assert.ok(types.includes('double'));
+});

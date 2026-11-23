@@ -51,3 +51,6 @@ export function statusOn(day, userId) {
   if (day.off?.includes(userId)) return { kind: 'off' };
   return { kind: 'none' };
 }
+
+/** Deep copy of plain data. Works on Vue reactive proxies (structuredClone does not). */
+export const clone = (o) => JSON.parse(JSON.stringify(o));
