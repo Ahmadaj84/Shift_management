@@ -1,4 +1,4 @@
-# نظام إدارة مناوبات تخطيط القلب · ECG Shift Management
+# نظام إدارة المناوبات · Hospital Shift Management
 
 واجهة النظام باللغة **العربية** افتراضياً (من اليمين إلى اليسار)، مع زر للتبديل إلى الإنجليزية.
 The interface is **Arabic by default** (right-to-left), with a one-click switch to English.
@@ -6,22 +6,38 @@ The interface is **Arabic by default** (right-to-left), with a one-click switch 
 Shift scheduling web app for an ECG technician team.
 **Frontend:** Vue 3 + Vite · **Backend:** Node.js + Express · **Database:** a JSON file (`server/data/db.json`).
 
+## Organisation and roles
+
+Hospitals → departments → teams (for example ECG team, internal-medicine nursing, ER nursing). Each team has its own members, leader, shift setup, schedules and requests. A person belongs to one team.
+
+| Role | Can do |
+|---|---|
+| **System admin** (`super_admin`) | Everything: create hospitals, departments, teams and hospital admins; manage any team |
+| **Hospital admin** (`hospital_admin`) | Within one hospital: departments, teams, leaders and staff; manage every team's schedule and requests |
+| **Team leader** (`leader`) | Their own team: generate and edit the schedule, add staff, set days off, approve leave and excuses, change the team's shift settings |
+| **Staff** (`staff`) | View their own monthly schedule and the team's published schedule; request leave or a one-day excuse |
+
+Admins who see several teams get a **team switcher** in the sidebar. The dashboard shows an overview of all their teams.
+
 ## Features
 
-**Admin**
-- Dashboard: who is on duty today/tomorrow, backups, absences, pending requests
-- Team: add/edit/remove technicians, set each person's **two weekly days off**, weekly coverage check, one-click **auto-balance days off**
-- Team Schedule: **generate** a monthly roster (3 shifts × 3 technicians by default), or start from an **empty schedule**; publish/unpublish; print
-- **Export to Excel** (تصدير إلى Excel): a colour-coded `.xlsx` with two sheets: the monthly grid with totals and a legend, and a day-by-day list of names, backups and absences. It is right-to-left in Arabic. Technicians can export published months.
-- **Drag & drop editor** (سحب وإفلات): a week board of shifts × days. Drag names between shifts, days and backup slots, from the team list, or onto "Not assigned" to remove them. Hold Ctrl to copy. On touch screens, click a name and then a slot. Every change is saved at once and can be undone.
-- **Conflict checks** shown right after each drop: double booking, working on leave or on a day off, night shift followed by a morning shift, a backup who is also working, understaffed shifts, and more than 5 working days in a week. Publishing a schedule that still has conflicts asks for confirmation.
-- Requests: approve or reject **leave** (date range) and **day excuses**. On approval, the system pulls a **backup** (someone on their day off) into the shift. The admin can choose who.
-- Settings: shift names, times, colours, technicians per shift
+**For leaders and admins (per team)**
+- Dashboard: who is on duty today/tomorrow, backups, absences, pending requests (plus an all-teams overview for admins)
+- Team: add/edit members, set each person's **two weekly days off**, weekly coverage check, one-click **auto-balance days off**
+- Team Schedule: **generate** a monthly roster, or start from an **empty schedule**; publish/unpublish; print
+- **Export to Excel** (تصدير إلى Excel): a colour-coded `.xlsx` with two sheets. One is the monthly grid with totals and a legend; the other lists names, backups and absences day by day. The title shows hospital, department and team. It is right-to-left in Arabic, and staff can export published months.
+- **Drag & drop editor** (سحب وإفلات): a week board of shifts × days. Drag names between shifts, days and backup slots, or onto "Not assigned" to remove them; hold Ctrl to copy. On touch screens, click a name then a slot. Changes save instantly and can be undone.
+- **Conflict checks** right after each drop: double booking, working on leave or a day off, night shift followed by the first shift of the next day, a backup who is also working, understaffed shifts, and more than 5 working days in a week.
+- Requests: approve or reject **leave** and **day excuses**. On approval a **backup** (someone on their day off) is pulled into the shift.
+- Settings (per team): 1–4 shifts with names, times and colours (presets: 3×8 h or 2×12 h); staff per shift
 
-**Technician**
+**For system / hospital admins**
+- Hospitals & teams page: create and rename hospitals, departments and teams (with a shift preset); appoint hospital admins (system admin only); move people between teams
+
+**For staff**
 - My Schedule: monthly calendar of their own shifts, days off and backup duties
 - Team Schedule: the published team roster (read-only)
-- Leave & Excuses: request leave or a one-day excuse, track its status, cancel pending requests
+- Leave & Excuses: request leave or a one-day excuse, track status, cancel pending requests
 - Change password
 
 ## Language
@@ -57,12 +73,15 @@ npm run build        # builds the Vue app into client/dist
 npm start            # serves API + app on http://localhost:3000
 ```
 
-On first start, `server/data/db.json` is created with sample data:
+On first start, `server/data/db.json` is created with sample data (2 hospitals, 3 teams):
 
 | Role | Username | Password |
 |---|---|---|
-| Admin | `admin` | `admin123` |
-| Technicians | `tech1` … `tech13` | `tech123` |
+| System admin | `admin` | `admin123` |
+| Hospital admin (King Fahad Hospital) | `hadmin` | `hadmin123` |
+| ECG team: leader `tech1`, staff `tech2`…`tech13` | `tech1` … | `tech123` |
+| Internal-medicine nursing (2×12 h): leader `nurse1`, staff `nurse2`…`nurse10` | `nurse1` … | `nurse123` |
+| ER nursing, North Hospital (2×12 h): leader `er1`, staff `er2`…`er9` | `er1` … | `er123` |
 
 **Change these passwords before real use.** To reset to sample data, run `npm run seed`.
 
@@ -95,13 +114,21 @@ Every push to the branch redeploys automatically. The database lives on a 1 GB p
 
 **Other hosts:** the `Dockerfile` runs on any Docker host (Railway, Fly.io, a hospital server). Mount a volume at `/data` and set the same variables.
 
+## Upgrading from the single-team version
+
+On first start, an existing `db.json` from the earlier ECG-only version is upgraded automatically:
+- **Backup:** a copy of the original is saved next to it as `db.json.v1-backup-<timestamp>`.
+- **Structure:** everything is placed in `المستشفى الرئيسي › قسم تخطيط القلب › فريق تخطيط القلب`. Rename these on the Hospitals & teams page.
+- **Accounts:** the old admin becomes a system admin and technicians become staff.
+- **History:** schedules, requests and change logs are kept.
+
 ## Tests
 
 ```bash
 npm test
 ```
 
-These check the scheduler: full staffing, no double-booking, no work on days off, no night→morning, fair load, and backup replacement. Team sizes from 13 to 17 are covered.
+These cover the scheduler (full staffing, no double booking, no work on days off, no night → next-morning, fair load, backup replacement, 3×8 h and 2×12 h teams), the upgrade from the single-team format, and permissions for every role over the real API.
 
 ## Project layout
 
@@ -112,10 +139,11 @@ server/
     db.js                  JSON file database (atomic writes)
     auth.js                password hashing (scrypt) + signed tokens
     scheduler.js           roster generation, backups, days-off balancing
-    routes/                auth, users, schedule, requests, settings
+    org.js                 hospitals/departments/teams, roles and permissions, data upgrade
+    routes/                auth, users, org, teams, schedule, requests
   test/
 client/
   src/
-    views/                 Dashboard, MySchedule, TeamSchedule, Requests, Team, Settings, Profile, Login
+    views/                 Dashboard, MySchedule, TeamSchedule, Requests, Team, Settings, Organization, Profile, Login
     components/            ECG logo/trace, modal, day editor, …
 ```

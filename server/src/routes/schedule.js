@@ -1,17 +1,20 @@
 import { Router } from 'express';
 import { db, save } from '../db.js';
-import { requireAdmin } from '../auth.js';
+import { teamLabels } from '../org.js';
 import { isMonth, isDate, monthOf, daysOfMonth } from '../dates.js';
 import { absenceFor, generateMonth, replacementCandidates } from '../scheduler.js';
 import { buildScheduleWorkbook } from '../export.js';
 
-const r = Router();
+// Mounted at /api/teams/:teamId/schedule — req.ctx is the team view, req.canManage set by routes/teams.js
+const r = Router({ mergeParams: true });
+const requireManager = (req, res, next) =>
+  req.canManage ? next() : res.status(403).json({ error: 'Team leader or admin access required' });
 
 r.get('/:ym', (req, res) => {
   const { ym } = req.params;
   if (!isMonth(ym)) return res.status(400).json({ error: 'Month must be YYYY-MM' });
-  const schedule = db().schedules[ym] || null;
-  if (schedule && !schedule.published && req.user.role !== 'admin') return res.json(null);
+  const schedule = req.ctx.schedules[ym] || null;
+  if (schedule && !schedule.published && !req.canManage) return res.json(null);
   res.json(schedule);
 });
 
@@ -20,15 +23,15 @@ r.get('/:ym/export', async (req, res, next) => {
   try {
     const { ym } = req.params;
     if (!isMonth(ym)) return res.status(400).json({ error: 'Month must be YYYY-MM' });
-    const d = db();
+    const d = req.ctx;
     const schedule = d.schedules[ym];
-    if (!schedule || (!schedule.published && req.user.role !== 'admin')) {
+    if (!schedule || (!schedule.published && !req.canManage)) {
       return res.status(404).json({ error: 'No schedule for this month' });
     }
     const lang = req.query.lang === 'en' ? 'en' : 'ar';
-    const wb = await buildScheduleWorkbook(d, ym, lang);
+    const wb = await buildScheduleWorkbook(d, teamLabels(db(), req.team.id), ym, lang);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="ecg-schedule-${ym}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="schedule-${req.team.id}-${ym}.xlsx"`);
     await wb.xlsx.write(res);
     res.end();
   } catch (e) {
@@ -36,10 +39,10 @@ r.get('/:ym/export', async (req, res, next) => {
   }
 });
 
-r.post('/:ym/generate', requireAdmin, (req, res) => {
+r.post('/:ym/generate', requireManager, (req, res) => {
   const { ym } = req.params;
   if (!isMonth(ym)) return res.status(400).json({ error: 'Month must be YYYY-MM' });
-  const d = db();
+  const d = req.ctx;
   if (d.schedules[ym] && !req.body?.overwrite) {
     return res.status(409).json({ error: 'A schedule already exists for this month. Confirm overwrite to regenerate.' });
   }
@@ -50,24 +53,24 @@ r.post('/:ym/generate', requireAdmin, (req, res) => {
   res.json(schedule);
 });
 
-r.post('/:ym/publish', requireAdmin, (req, res) => {
-  const s = db().schedules[req.params.ym];
+r.post('/:ym/publish', requireManager, (req, res) => {
+  const s = req.ctx.schedules[req.params.ym];
   if (!s) return res.status(404).json({ error: 'No schedule for this month' });
   s.published = req.body?.published !== false;
   save();
   res.json(s);
 });
 
-r.delete('/:ym', requireAdmin, (req, res) => {
-  delete db().schedules[req.params.ym];
+r.delete('/:ym', requireManager, (req, res) => {
+  delete req.ctx.schedules[req.params.ym];
   save();
   res.json({ ok: true });
 });
 
-r.get('/:ym/days/:date/candidates', requireAdmin, (req, res) => {
+r.get('/:ym/days/:date/candidates', requireManager, (req, res) => {
   const { date } = req.params;
   const { shift, exclude } = req.query;
-  res.json(replacementCandidates(db(), date, shift, exclude));
+  res.json(replacementCandidates(req.ctx, date, shift, exclude));
 });
 
 /**
@@ -122,10 +125,10 @@ function refreshDayLists(d, date, day) {
 }
 
 // Create an empty month to fill in by hand (drag & drop).
-r.post('/:ym/create-empty', requireAdmin, (req, res) => {
+r.post('/:ym/create-empty', requireManager, (req, res) => {
   const { ym } = req.params;
   if (!isMonth(ym)) return res.status(400).json({ error: 'Month must be YYYY-MM' });
-  const d = db();
+  const d = req.ctx;
   if (d.schedules[ym] && !req.body?.overwrite) {
     return res.status(409).json({ error: 'A schedule already exists for this month. Confirm overwrite to regenerate.' });
   }
@@ -147,8 +150,8 @@ r.post('/:ym/create-empty', requireAdmin, (req, res) => {
 });
 
 // Admin manual edit of one day.
-r.put('/:ym/days/:date', requireAdmin, (req, res) => {
-  const d = db();
+r.put('/:ym/days/:date', requireManager, (req, res) => {
+  const d = req.ctx;
   const err = applyDayEdit(d, req.params.ym, req.params.date, req.body, req.user.id);
   if (err) return res.status(err.startsWith('No schedule') ? 404 : 400).json({ error: err });
   save();
@@ -157,8 +160,8 @@ r.put('/:ym/days/:date', requireAdmin, (req, res) => {
 
 // Admin edit of several days at once (a drag & drop move touches two days).
 // Body: { days: { 'YYYY-MM-DD': { shifts, backup } } } — all or nothing.
-r.patch('/:ym/days', requireAdmin, (req, res) => {
-  const d = db();
+r.patch('/:ym/days', requireManager, (req, res) => {
+  const d = req.ctx;
   const { ym } = req.params;
   const edits = req.body?.days;
   if (!edits || typeof edits !== 'object' || !Object.keys(edits).length) return res.status(400).json({ error: 'Invalid date' });

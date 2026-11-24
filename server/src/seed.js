@@ -8,4 +8,4 @@ if (fs.existsSync(DB_FILE) && !process.argv.includes('--force')) {
 }
 if (fs.existsSync(DB_FILE)) fs.unlinkSync(DB_FILE);
 load();
-console.log('Seeded. Admin login: admin / admin123 — technicians: tech1..tech13 / tech123');
+console.log('Seeded. Logins: admin/admin123 (super admin), hadmin/hadmin123 (hospital admin), tech1..13/tech123, nurse1..10/nurse123, er1..9/er123 (the first of each team is its leader)');

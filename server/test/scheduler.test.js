@@ -1,10 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSeedData } from '../src/seed-data.js';
+import { teamCtx } from '../src/org.js';
 import { generateMonth, applyAbsence, weekdayCoverage, shiftOf } from '../src/scheduler.js';
 import { addDays, daysOfMonth } from '../src/dates.js';
 
-const fresh = () => buildSeedData();
+// The ECG demo team (13 people, 3 shifts × 3)
+const fresh = () => {
+  const all = buildSeedData();
+  return teamCtx(all, all.teams[0]);
+};
 
 test('days off are balanced so every day can be staffed', () => {
   const d = fresh();

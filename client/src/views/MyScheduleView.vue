@@ -11,7 +11,7 @@
     <div v-if="error" class="error-box mb">{{ error }}</div>
 
     <div class="grid grid-4 mb">
-      <div v-for="s in base.settings.shifts" :key="s.id" class="card stat">
+      <div v-for="s in myShifts" :key="s.id" class="card stat">
         <span class="label">{{ t('my.shiftsOf', { name: shiftName(s) }) }}</span>
         <span class="value" :style="{ color: s.color }">{{ counts[s.id] || 0 }}</span>
         <span class="small muted" dir="ltr">{{ s.start }} – {{ s.end }}</span>
@@ -41,11 +41,11 @@
         >
           <div class="num">{{ +date.slice(8) }}</div>
           <template v-if="status(date).kind === 'shift'">
-            <div class="what" :style="{ color: shiftById(status(date).shift).color }">{{ shiftName(shiftById(status(date).shift)) }}</div>
-            <div class="small muted" dir="ltr">{{ shiftById(status(date).shift).start }}–{{ shiftById(status(date).shift).end }}</div>
+            <div class="what" :style="{ color: myShift(status(date).shift).color }">{{ shiftName(myShift(status(date).shift)) }}</div>
+            <div class="small muted" dir="ltr">{{ myShift(status(date).shift).start }}–{{ myShift(status(date).shift).end }}</div>
           </template>
           <div v-else-if="status(date).kind === 'backup'" class="what backup">
-            {{ t('status.backup') }}<br /><span class="small">{{ shiftName(shiftById(status(date).shift)) }}</span>
+            {{ t('status.backup') }}<br /><span class="small">{{ shiftName(myShift(status(date).shift)) }}</span>
           </div>
           <div v-else-if="status(date).kind === 'off'" class="what off">{{ t('status.dayOff') }}</div>
           <div v-else-if="status(date).kind === 'standby'" class="what backup">{{ t('status.standby') }}</div>
@@ -61,7 +61,7 @@
       </div>
 
       <div class="legend">
-        <span v-for="s in base.settings.shifts" :key="s.id"><i class="dot" :style="{ background: s.color }"></i> {{ shiftName(s) }}</span>
+        <span v-for="s in myShifts" :key="s.id"><i class="dot" :style="{ background: s.color }"></i> {{ shiftName(s) }}</span>
         <span><i class="dot" style="background: #14b8a6"></i> {{ t('legend.backupStandby') }}</span>
         <span><i class="dot" style="background: #94a3b8"></i> {{ t('status.dayOff') }}</span>
         <span><i class="dot" style="background: #e11d48"></i> {{ t('legend.leaveExcuse') }}</span>
@@ -96,7 +96,12 @@ const loading = ref(false);
 const error = ref('');
 const today = todayStr();
 
-const me = computed(() => base.users.find((u) => u.id === auth.user.id));
+// Always the user's own team (an admin may be looking at another team elsewhere)
+const myTeamId = auth.user.teamId;
+const myTeam = ref(base.teamId === myTeamId ? base.team : null);
+const myShifts = computed(() => myTeam.value?.settings.shifts || []);
+const myShift = (id) => myShifts.value.find((s) => s.id === id) || { name: id, color: '#64748b' };
+const me = ref(base.users.find((u) => u.id === auth.user.id) || null);
 const days = computed(() => daysOfMonth(month.value));
 const lead = computed(() => weekdayOf(days.value[0]));
 const status = (date) => statusOn(schedule.value?.days?.[date], auth.user.id);
@@ -123,7 +128,7 @@ const absentLabel = (date) => (requestOn(date)?.type === 'excuse' ? t('status.ex
 function cellStyle(date) {
   const s = status(date);
   if (s.kind === 'shift') {
-    const c = shiftById(s.shift).color;
+    const c = myShift(s.shift).color;
     return { background: c + '14', borderColor: c + '66' };
   }
   return {};
@@ -133,7 +138,9 @@ async function load() {
   loading.value = true;
   error.value = '';
   try {
-    [schedule.value, requests.value] = await Promise.all([api(`/schedule/${month.value}`), api('/requests')]);
+    if (!myTeam.value) myTeam.value = await api(`/teams/${myTeamId}`);
+    if (!me.value) me.value = (await api(`/users?teamId=${myTeamId}`)).find((u) => u.id === auth.user.id);
+    [schedule.value, requests.value] = await Promise.all([api(`/teams/${myTeamId}/schedule/${month.value}`), api('/requests?mine=1')]);
   } catch (e) {
     error.value = e.message;
   } finally {

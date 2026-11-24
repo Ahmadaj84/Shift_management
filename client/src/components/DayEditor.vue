@@ -87,7 +87,7 @@ async function save() {
   busy.value = true;
   error.value = '';
   try {
-    const day = await api(`/schedule/${props.date.slice(0, 7)}/days/${props.date}`, { method: 'PUT', body: draft });
+    const day = await api(`/teams/${base.teamId}/schedule/${props.date.slice(0, 7)}/days/${props.date}`, { method: 'PUT', body: draft });
     emit('saved', day);
   } catch (e) {
     error.value = e.message;

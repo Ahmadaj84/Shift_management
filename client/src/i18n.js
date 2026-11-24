@@ -44,10 +44,10 @@ const DEFAULT_SHIFT = {
   morning: ['Morning', 'صباحي', 'M', 'ص'],
   evening: ['Evening', 'مسائي', 'E', 'م'],
   night: ['Night', 'ليلي', 'N', 'ل'],
+  day: ['Day', 'نهاري', 'D', 'ن'],
 };
 export const shiftName = (s) => (s && DEFAULT_SHIFT[s.id]?.slice(0, 2).includes(s.name) ? t(`shift.${s.id}`) : s?.name ?? '');
 export const shiftShort = (s) => (s && DEFAULT_SHIFT[s.id]?.slice(2).includes(s.short) ? t(`shiftShort.${s.id}`) : s?.short ?? '');
-export const deptName = (n) => (!n || ['ECG Department', 'قسم تخطيط القلب'].includes(n) ? t('app.department') : n);
 
 // Server error messages are in English; translate them for display.
 const ERROR_PATTERNS = [

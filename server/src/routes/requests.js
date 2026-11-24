@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, nextId, save } from '../db.js';
-import { requireAdmin } from '../auth.js';
+import { canManageTeam, findTeam, teamCtx } from '../org.js';
 import { dateRange, isDate, monthOf } from '../dates.js';
 import { applyAbsence, replacementCandidates, shiftOf } from '../scheduler.js';
 
@@ -11,10 +11,23 @@ const MAX_LEAVE_DAYS = 60;
 
 const datesOf = (req) => (req.type === 'excuse' ? [req.date] : dateRange(req.startDate, req.endDate));
 
+/** Load the request and check the user manages its team; sets req.item and req.ctx. */
+function managedRequest(req, res, next) {
+  const d = db();
+  const item = d.requests.find((x) => x.id === req.params.id);
+  if (!item) return res.status(404).json({ error: 'Request not found' });
+  if (!canManageTeam(d, req.user, item.teamId)) return res.status(403).json({ error: 'Not allowed' });
+  req.item = item;
+  req.ctx = teamCtx(d, findTeam(d, item.teamId));
+  next();
+}
+
 r.get('/', (req, res) => {
   const d = db();
-  let list = d.requests;
-  if (req.user.role !== 'admin') list = list.filter((x) => x.userId === req.user.id);
+  // Own requests + requests of the teams the user manages
+  let list = d.requests.filter((x) => x.userId === req.user.id || canManageTeam(d, req.user, x.teamId));
+  if (req.query.mine) list = list.filter((x) => x.userId === req.user.id);
+  if (req.query.teamId) list = list.filter((x) => x.teamId === req.query.teamId);
   if (req.query.status) list = list.filter((x) => x.status === req.query.status);
   res.json([...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
 });
@@ -22,13 +35,16 @@ r.get('/', (req, res) => {
 r.post('/', (req, res) => {
   const d = db();
   const body = req.body || {};
-  // Admins may file a request on behalf of a team member.
-  const userId = req.user.role === 'admin' && body.userId ? body.userId : req.user.id;
-  if (!d.users.some((u) => u.id === userId && u.active !== false)) return res.status(400).json({ error: 'Unknown staff member' });
+  // Leaders/admins may file a request on behalf of a member of a team they manage.
+  const userId = body.userId || req.user.id;
+  const target = d.users.find((u) => u.id === userId && u.active !== false);
+  if (!target || !target.teamId) return res.status(400).json({ error: 'Unknown staff member' });
+  if (userId !== req.user.id && !canManageTeam(d, req.user, target.teamId)) return res.status(403).json({ error: 'Not allowed' });
 
   const item = {
     id: null,
     userId,
+    teamId: target.teamId,
     type: body.type,
     reason: String(body.reason || '').trim().slice(0, 500),
     status: 'pending',
@@ -67,7 +83,7 @@ r.delete('/:id', (req, res) => {
   const d = db();
   const item = d.requests.find((x) => x.id === req.params.id);
   if (!item) return res.status(404).json({ error: 'Request not found' });
-  if (item.userId !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Not allowed' });
+  if (item.userId !== req.user.id && !canManageTeam(d, req.user, item.teamId)) return res.status(403).json({ error: 'Not allowed' });
   if (item.status !== 'pending') return res.status(400).json({ error: 'Only pending requests can be cancelled' });
   item.status = 'cancelled';
   item.reviewedAt = new Date().toISOString();
@@ -76,10 +92,8 @@ r.delete('/:id', (req, res) => {
 });
 
 // For the approval dialog: per affected date, the shift and the suggested backup.
-r.get('/:id/coverage', requireAdmin, (req, res) => {
-  const d = db();
-  const item = d.requests.find((x) => x.id === req.params.id);
-  if (!item) return res.status(404).json({ error: 'Request not found' });
+r.get('/:id/coverage', managedRequest, (req, res) => {
+  const { item, ctx: d } = req;
   const rows = datesOf(item).map((date) => {
     const day = d.schedules[monthOf(date)]?.days?.[date];
     if (!day) return { date, scheduled: false };
@@ -96,10 +110,8 @@ r.get('/:id/coverage', requireAdmin, (req, res) => {
   res.json(rows);
 });
 
-r.post('/:id/approve', requireAdmin, (req, res) => {
-  const d = db();
-  const item = d.requests.find((x) => x.id === req.params.id);
-  if (!item) return res.status(404).json({ error: 'Request not found' });
+r.post('/:id/approve', managedRequest, (req, res) => {
+  const { item, ctx: d } = req;
   if (item.status !== 'pending') return res.status(400).json({ error: `Request is already ${item.status}` });
   const replacements = req.body?.replacements || {}; // { date: userId }
 
@@ -114,10 +126,8 @@ r.post('/:id/approve', requireAdmin, (req, res) => {
   res.json(item);
 });
 
-r.post('/:id/reject', requireAdmin, (req, res) => {
-  const d = db();
-  const item = d.requests.find((x) => x.id === req.params.id);
-  if (!item) return res.status(404).json({ error: 'Request not found' });
+r.post('/:id/reject', managedRequest, (req, res) => {
+  const { item } = req;
   if (item.status !== 'pending') return res.status(400).json({ error: `Request is already ${item.status}` });
   item.status = 'rejected';
   item.reviewedBy = req.user.id;

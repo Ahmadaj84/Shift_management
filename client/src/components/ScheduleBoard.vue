@@ -402,7 +402,7 @@ function commit(drafts, { record, focus }) {
   saving.value = true;
   saveState.value = 'saving';
   queue = queue
-    .then(() => api(`/schedule/${props.month}/days`, { method: 'PATCH', body: { days: drafts } }))
+    .then(() => api(`/teams/${base.teamId}/schedule/${props.month}/days`, { method: 'PATCH', body: { days: drafts } }))
     .then((days) => {
       for (const [date, d] of Object.entries(days)) Object.assign(day(date), d);
       saveState.value = 'saved';

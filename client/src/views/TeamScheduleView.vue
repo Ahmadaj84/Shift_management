@@ -193,7 +193,7 @@ async function load() {
   loading.value = true;
   error.value = '';
   try {
-    schedule.value = await api(`/schedule/${month.value}`);
+    schedule.value = await api(`/teams/${base.teamId}/schedule/${month.value}`);
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -209,7 +209,7 @@ async function generate(overwrite) {
   if (overwrite && !confirm(t('schedule.confirmRegenerate'))) return;
   busy.value = true;
   try {
-    schedule.value = await api(`/schedule/${month.value}/generate`, { method: 'POST', body: { overwrite, publish: schedule.value?.published } });
+    schedule.value = await api(`/teams/${base.teamId}/schedule/${month.value}/generate`, { method: 'POST', body: { overwrite, publish: schedule.value?.published } });
     toast(t('schedule.generatedToast'));
   } catch (e) {
     toast(e.message, 'error');
@@ -221,7 +221,7 @@ async function generate(overwrite) {
 async function createEmpty() {
   busy.value = true;
   try {
-    schedule.value = await api(`/schedule/${month.value}/create-empty`, { method: 'POST', body: {} });
+    schedule.value = await api(`/teams/${base.teamId}/schedule/${month.value}/create-empty`, { method: 'POST', body: {} });
     view.value = 'board';
     toast(t('schedule.emptyCreated'));
   } catch (e) {
@@ -234,7 +234,7 @@ async function createEmpty() {
 async function togglePublish() {
   if (!schedule.value.published && conflictErrors.value.length && !confirm(t('schedule.confirmPublishConflicts', { n: conflictErrors.value.length }))) return;
   try {
-    schedule.value = await api(`/schedule/${month.value}/publish`, { method: 'POST', body: { published: !schedule.value.published } });
+    schedule.value = await api(`/teams/${base.teamId}/schedule/${month.value}/publish`, { method: 'POST', body: { published: !schedule.value.published } });
     toast(schedule.value.published ? t('schedule.publishedToast') : t('schedule.unpublishedToast'));
   } catch (e) {
     toast(e.message, 'error');
@@ -253,7 +253,7 @@ const exporting = ref(false);
 async function exportExcel() {
   exporting.value = true;
   try {
-    await download(`/schedule/${month.value}/export?lang=${i18n.locale}`, `ecg-schedule-${month.value}.xlsx`);
+    await download(`/teams/${base.teamId}/schedule/${month.value}/export?lang=${i18n.locale}`, `schedule-${month.value}-${base.teamId}.xlsx`);
   } catch (e) {
     toast(e.message, 'error');
   } finally {

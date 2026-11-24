@@ -5,7 +5,7 @@
         <h1>{{ admin ? t('req.adminTitle') : t('req.title') }}</h1>
         <p>{{ admin ? t('req.adminSubtitle') : t('req.subtitle') }}</p>
       </div>
-      <button class="btn btn-primary" @click="openForm()">+ {{ t('req.new') }}</button>
+      <button v-if="admin || auth.user?.teamId" class="btn btn-primary" @click="openForm()">+ {{ t('req.new') }}</button>
     </div>
 
     <div class="row mb">
@@ -162,7 +162,7 @@ const affected = computed(() => approving.value?.rows?.filter((r) => r.scheduled
 
 async function load() {
   try {
-    requests.value = await api('/requests');
+    requests.value = await api(admin ? `/requests?teamId=${base.teamId}` : '/requests?mine=1');
   } catch (e) {
     toast(e.message, 'error');
   }
@@ -171,7 +171,7 @@ onMounted(load);
 
 function openForm(preset = {}) {
   formError.value = '';
-  form.value = { type: 'excuse', date: '', startDate: '', endDate: '', leaveType: 'annual', reason: '', userId: auth.user?.id, ...preset };
+  form.value = { type: 'excuse', date: '', startDate: '', endDate: '', leaveType: 'annual', reason: '', userId: auth.user?.teamId === base.teamId || !admin ? auth.user?.id : base.users.find((u) => u.active !== false)?.id, ...preset };
 }
 watch(
   () => route.query,

@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h1>{{ t('nav.dashboard') }}</h1>
-        <p>{{ fmtDate(today) }} · {{ deptName(base.settings.departmentName) }}</p>
+        <p>{{ fmtDate(today) }} · {{ base.team.name }} · {{ base.team.hospital }} — {{ base.team.department }}</p>
       </div>
       <RouterLink to="/schedule" class="btn">{{ t('dash.openSchedule') }}</RouterLink>
     </div>
@@ -82,6 +82,43 @@
         </div>
       </div>
     </div>
+
+    <div v-if="isOrgAdmin() && overview.length > 1" class="card mt">
+      <div class="card-head">
+        <h2>{{ t('dash.allTeams') }}</h2>
+        <span class="small muted">{{ monthLabel(month) }}</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>{{ t('org.hospital') }}</th>
+              <th>{{ t('org.department') }}</th>
+              <th>{{ t('org.team') }}</th>
+              <th>{{ t('org.leaders') }}</th>
+              <th>{{ t('org.members') }}</th>
+              <th>{{ t('dash.scheduleStatus') }}</th>
+              <th>{{ t('dash.pendingRequests') }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in overview" :key="row.teamId" :class="{ current: row.teamId === base.teamId }">
+              <td>{{ row.hospital }}</td>
+              <td>{{ row.department }}</td>
+              <td><strong>{{ row.name }}</strong></td>
+              <td class="small">{{ row.leaders.map((l) => l.name).join('، ') || '—' }}</td>
+              <td>{{ row.members }}</td>
+              <td>
+                <span class="badge" :class="{ published: 'badge-approved', draft: 'badge-pending', none: 'badge-cancelled' }[row.schedule]">{{ t(`dash.sched.${row.schedule}`) }}</span>
+              </td>
+              <td><span v-if="row.pending" class="badge badge-rejected">{{ row.pending }}</span><span v-else class="muted">0</span></td>
+              <td><button v-if="row.teamId !== base.teamId" class="btn btn-sm" @click="selectTeam(row.teamId)">{{ t('dash.open') }}</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -92,7 +129,8 @@ import EcgLine from '../components/EcgLine.vue';
 import ShiftBadge from '../components/ShiftBadge.vue';
 import { api } from '../api.js';
 import { base, userName } from '../store.js';
-import { t, deptName } from '../i18n.js';
+import { t } from '../i18n.js';
+import { isOrgAdmin, selectTeam, teamList } from '../store.js';
 import { currentMonth, fmtDate, monthLabel, todayStr } from '../utils.js';
 
 const today = todayStr();
@@ -116,14 +154,24 @@ const focusDay = computed(() => {
 });
 const warnings = computed(() => (schedule.value ? Object.values(schedule.value.days).filter((d) => base.settings.shifts.some((s) => (d.shifts[s.id]?.length || 0) < base.settings.staffPerShift)) : []));
 
+const overview = ref([]);
+async function loadOverview() {
+  if (!isOrgAdmin()) return;
+  const rows = await api('/org/overview');
+  const teams = new Map(teamList().map((tm) => [tm.id, tm]));
+  overview.value = rows.map((r) => ({ ...r, ...teams.get(r.teamId) })).filter((r) => r.name);
+}
+
 onMounted(async () => {
-  const calls = [api(`/schedule/${month}`), api('/requests?status=pending')];
-  if (tomorrow.slice(0, 7) !== month) calls.push(api(`/schedule/${tomorrow.slice(0, 7)}`));
+  loadOverview();
+  const calls = [api(`/teams/${base.teamId}/schedule/${month}`), api(`/requests?status=pending&teamId=${base.teamId}`)];
+  if (tomorrow.slice(0, 7) !== month) calls.push(api(`/teams/${base.teamId}/schedule/${tomorrow.slice(0, 7)}`));
   [schedule.value, pending.value, nextSchedule.value = null] = await Promise.all(calls);
 });
 </script>
 
 <style scoped>
+tr.current td { background: #f0fdf4; }
 .small-value { font-size: 20px; }
 .duty { padding: 12px 0; border-top: 1px dashed var(--border); }
 .duty:first-of-type { border-top: none; padding-top: 0; }

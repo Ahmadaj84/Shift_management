@@ -148,8 +148,10 @@ export function generateMonth(d, ym) {
     // Left-over available staff: add to the least-staffed shifts or keep as standby.
     if (assignExtraStaff) {
       for (const uid of [...pool].sort()) {
+        // Extra people never go to the night shift: everyone on a night is blocked
+        // from the next morning, so a bigger night crew can leave tomorrow short.
         const sid = shiftIds
-          .filter((s) => canWork(uid, s))
+          .filter((s) => canWork(uid, s) && (s !== nightId || shiftIds.length === 1))
           .sort((a, b) => day.shifts[a].length - day.shifts[b].length || cost(uid, a) - cost(uid, b))[0];
         if (!sid) continue;
         day.shifts[sid].push(uid);

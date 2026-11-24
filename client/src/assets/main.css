@@ -147,3 +147,7 @@ input[type='date'], input[type='time'] { text-align: start; }
 @media (max-width: 900px) {
   [dir='rtl'] .shell:not(.open) .sidebar { transform: translateX(100%); }
 }
+.badge-role-super_admin { background: #fce7f3; color: #9d174d; }
+.badge-role-hospital_admin { background: #ede9fe; color: #5b21b6; }
+.badge-role-leader { background: #fef3c7; color: #92400e; }
+.badge-role-staff { background: #e0f2fe; color: #075985; }

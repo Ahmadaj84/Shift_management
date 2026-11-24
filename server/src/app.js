@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { requireAuth } from './auth.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
-import scheduleRoutes from './routes/schedule.js';
 import requestRoutes from './routes/requests.js';
-import settingsRoutes from './routes/settings.js';
+import orgRoutes from './routes/org.js';
+import teamRoutes from './routes/teams.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,9 +21,9 @@ export function createApp() {
   app.get('/api/health', (req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRoutes);
   app.use('/api/users', requireAuth, userRoutes);
-  app.use('/api/schedule', requireAuth, scheduleRoutes);
+  app.use('/api/org', requireAuth, orgRoutes);
+  app.use('/api/teams', requireAuth, teamRoutes);
   app.use('/api/requests', requireAuth, requestRoutes);
-  app.use('/api/settings', requireAuth, settingsRoutes);
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
   // Serve the built Vue app in production

@@ -9,7 +9,7 @@ const T = {
     grid: 'الجدول الشهري',
     daily: 'التوزيع اليومي',
     title: 'جدول المناوبات',
-    technician: 'الفني',
+    technician: 'الموظف',
     total: 'المجموع',
     backupCol: 'احتياط',
     date: 'التاريخ',
@@ -24,16 +24,15 @@ const T = {
     exported: 'تاريخ التصدير',
     weekdays: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
     letters: ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'],
-    shift: { morning: 'صباحي', evening: 'مسائي', night: 'ليلي' },
-    short: { morning: 'ص', evening: 'م', night: 'ل' },
-    dept: 'قسم تخطيط القلب',
+    shift: { morning: 'صباحي', evening: 'مسائي', night: 'ليلي', day: 'نهاري' },
+    short: { morning: 'ص', evening: 'م', night: 'ل', day: 'ن' },
     months: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
   },
   en: {
     grid: 'Monthly roster',
     daily: 'Daily list',
     title: 'Shift schedule',
-    technician: 'Technician',
+    technician: 'Staff member',
     total: 'Total',
     backupCol: 'Backup',
     date: 'Date',
@@ -48,17 +47,15 @@ const T = {
     exported: 'Exported',
     weekdays: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
     letters: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
-    shift: { morning: 'Morning', evening: 'Evening', night: 'Night' },
-    short: { morning: 'M', evening: 'E', night: 'N' },
-    dept: 'ECG Department',
+    shift: { morning: 'Morning', evening: 'Evening', night: 'Night', day: 'Day' },
+    short: { morning: 'M', evening: 'E', night: 'N', day: 'D' },
     months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
   },
 };
 
 // Built-in names (either language) follow the export language; custom names are kept.
-const DEFAULT_NAMES = { morning: ['Morning', 'صباحي'], evening: ['Evening', 'مسائي'], night: ['Night', 'ليلي'] };
-const DEFAULT_SHORT = { morning: ['M', 'ص'], evening: ['E', 'م'], night: ['N', 'ل'] };
-const DEFAULT_DEPT = ['ECG Department', 'قسم تخطيط القلب'];
+const DEFAULT_NAMES = { morning: ['Morning', 'صباحي'], evening: ['Evening', 'مسائي'], night: ['Night', 'ليلي'], day: ['Day', 'نهاري'] };
+const DEFAULT_SHORT = { morning: ['M', 'ص'], evening: ['E', 'م'], night: ['N', 'ل'], day: ['D', 'ن'] };
 
 const argb = (hex) => 'FF' + hex.replace('#', '').toUpperCase();
 const fill = (hex) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: argb(hex) } });
@@ -72,7 +69,11 @@ function tint(hex, amount = 0.8) {
   return '#' + [16, 8, 0].map((s) => ch(s).toString(16).padStart(2, '0')).join('');
 }
 
-export async function buildScheduleWorkbook(d, ym, lang = 'ar') {
+/**
+ * @param d       team view ({ settings, users, schedules }) from org.teamCtx
+ * @param labels  { hospital, department, team } names for the title
+ */
+export async function buildScheduleWorkbook(d, labels, ym, lang = 'ar') {
   const L = T[lang] || T.ar;
   const rtl = lang !== 'en';
   const schedule = d.schedules[ym];
@@ -82,7 +83,7 @@ export async function buildScheduleWorkbook(d, ym, lang = 'ar') {
     label: DEFAULT_NAMES[s.id]?.includes(s.name) ? L.shift[s.id] : s.name,
     code: DEFAULT_SHORT[s.id]?.includes(s.short) ? L.short[s.id] : s.short,
   }));
-  const dept = DEFAULT_DEPT.includes(d.settings.departmentName) ? L.dept : d.settings.departmentName;
+  const heading = [labels.hospital, labels.department, labels.team].filter(Boolean).join(' — ');
   const monthName = `${L.months[+ym.slice(5) - 1]} ${ym.slice(0, 4)}`;
   const byId = new Map(d.users.map((u) => [u.id, u]));
   const name = (id) => byId.get(id)?.name ?? id;
@@ -93,7 +94,7 @@ export async function buildScheduleWorkbook(d, ym, lang = 'ar') {
   const staff = d.users.filter((u) => ids.has(u.id));
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = dept;
+  wb.creator = labels.hospital || 'Shift Management';
   wb.created = new Date();
   const font = { name: 'Arial', size: 10 };
 
@@ -107,7 +108,7 @@ export async function buildScheduleWorkbook(d, ym, lang = 'ar') {
   const lastCol = totalsCol + shifts.length + 1;
 
   ws.mergeCells(1, 1, 1, lastCol);
-  ws.getCell(1, 1).value = `${dept} — ${L.title} — ${monthName}`;
+  ws.getCell(1, 1).value = `${heading} — ${L.title} — ${monthName}`;
   ws.getCell(1, 1).font = { ...font, size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
   ws.getCell(1, 1).fill = fill('#0B1F2E');
   ws.getCell(1, 1).alignment = { horizontal: 'center', vertical: 'middle' };
