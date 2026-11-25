@@ -17,31 +17,38 @@ export function absenceFor(d, userId, date) {
 
 const isDayOff = (u, date) => (u.daysOff || []).includes(weekday(date));
 
+const DAY_PAIRS = [0, 1, 2, 3, 4, 5, 6].map((d) => [d, (d + 1) % 7]);
+// Spread consecutive assignments around the week: weekend pairs first, then interleave.
+const PAIR_ORDER = [5, 2, 6, 3, 0, 4, 1];
+
+/**
+ * Pick two consecutive days off with the lowest load and add them to offCount
+ * (people off per weekday, 0 = Sunday). `i` rotates the tie-break order.
+ */
+export function pickDaysOff(offCount, i = 0) {
+  let best = null;
+  let bestLoad = Infinity;
+  for (let k = 0; k < 7; k++) {
+    const p = DAY_PAIRS[PAIR_ORDER[(i + k) % 7]];
+    const load = Math.max(offCount[p[0]], offCount[p[1]]) * 10 + offCount[p[0]] + offCount[p[1]];
+    if (load < bestLoad) {
+      bestLoad = load;
+      best = p;
+    }
+  }
+  offCount[best[0]]++;
+  offCount[best[1]]++;
+  return [...best].sort((a, b) => a - b);
+}
+
 /**
  * Give every staff member two consecutive days off so that the number of
  * people off on each weekday is as even as possible.
  */
 export function balanceDaysOff(staff) {
-  const pairs = [0, 1, 2, 3, 4, 5, 6].map((d) => [d, (d + 1) % 7]);
-  // Order pairs so that consecutive assignments are spread around the week:
-  // start with the Fri-Sat / Sat-Sun weekend pairs, then interleave.
-  const order = [5, 2, 6, 3, 0, 4, 1];
   const offCount = Array(7).fill(0);
   staff.forEach((u, i) => {
-    // pick the pair with the lowest combined load, using `order` as tiebreak
-    let best = null;
-    let bestLoad = Infinity;
-    for (let k = 0; k < 7; k++) {
-      const p = pairs[order[(i + k) % 7]];
-      const load = Math.max(offCount[p[0]], offCount[p[1]]) * 10 + offCount[p[0]] + offCount[p[1]];
-      if (load < bestLoad) {
-        bestLoad = load;
-        best = p;
-      }
-    }
-    u.daysOff = [...best].sort((a, b) => a - b);
-    offCount[best[0]]++;
-    offCount[best[1]]++;
+    u.daysOff = pickDaysOff(offCount, i);
   });
   return offCount;
 }

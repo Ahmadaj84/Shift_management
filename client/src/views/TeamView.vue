@@ -6,6 +6,7 @@
         <p>{{ base.team.hospital }} · {{ base.team.department }} · {{ t('team.subtitle', { n: rotation.length }) }}</p>
       </div>
       <div class="row">
+        <button class="btn" @click="showImport = true">📥 {{ t('import.button') }}</button>
         <button class="btn" @click="balance">⚖ {{ t('team.balance') }}</button>
         <button class="btn btn-primary" @click="openEdit()">+ {{ t('team.add') }}</button>
       </div>
@@ -74,6 +75,8 @@
       </div>
     </div>
 
+    <ImportDialog v-if="showImport" @close="showImport = false" @imported="refresh" />
+
     <AppModal v-if="edit" :title="edit.id ? t('team.editTitle', { name: edit.name }) : t('team.addTitle')" width="640px" @close="edit = null">
       <div class="form-grid">
         <label class="field">{{ t('team.fullName') }} <input v-model="edit.name" /></label>
@@ -126,12 +129,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import AppModal from '../components/AppModal.vue';
+import ImportDialog from '../components/ImportDialog.vue';
 import { api } from '../api.js';
 import { auth, base, isOrgAdmin, loadBase, selectTeam, teamList, toast } from '../store.js';
 import { wdShort, weekdays } from '../utils.js';
 import { t } from '../i18n.js';
 
 const coverage = ref([]);
+const showImport = ref(false);
 const edit = ref(null);
 const error = ref('');
 const busy = ref(false);

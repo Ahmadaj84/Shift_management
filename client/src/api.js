@@ -36,3 +36,19 @@ export async function download(path, filename) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Upload a file's raw bytes (POST) and return the JSON response. */
+export async function upload(path, file) {
+  const res = await fetch(`/api${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}),
+    },
+    body: file,
+  });
+  const data = await res.json().catch(() => null);
+  if (res.status === 401 && auth.token) logout();
+  if (!res.ok) throw new Error(translateError(data?.error || `Request failed (${res.status})`));
+  return data;
+}

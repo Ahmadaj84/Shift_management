@@ -24,6 +24,12 @@ Admins who see several teams get a **team switcher** in the sidebar. The dashboa
 **For leaders and admins (per team)**
 - Dashboard: who is on duty today/tomorrow, backups, absences, pending requests (plus an all-teams overview for admins)
 - Team: add/edit members, set each person's **two weekly days off**, weekly coverage check, one-click **auto-balance days off**
+- **Import members from Excel** (استيراد من Excel): the import works in three steps.
+  1. Download the template.
+  2. Upload a filled `.xlsx` or `.csv` and see a preview: new / update / error per row, with reasons. Nothing is saved yet.
+  3. Click Import.
+
+  Your own sheets work too: columns are matched by Arabic or English names in any order, and the header may sit under a title row. Days off can be written as "الجمعة، السبت" or "Fri, Sat"; blank days off are balanced automatically. A blank username uses the employee ID. A username or employee ID that already exists in the team updates that person. Generated passwords can be downloaded as CSV once.
 - Team Schedule: **generate** a monthly roster, or start from an **empty schedule**; publish/unpublish; print
 - **Export to Excel** (تصدير إلى Excel): a colour-coded `.xlsx` with two sheets. One is the monthly grid with totals and a legend; the other lists names, backups and absences day by day. The title shows hospital, department and team. It is right-to-left in Arabic, and staff can export published months.
 - **Drag & drop editor** (سحب وإفلات): a week board of shifts × days. Drag names between shifts, days and backup slots, or onto "Not assigned" to remove them; hold Ctrl to copy. On touch screens, click a name then a slot. Changes save instantly and can be undone.

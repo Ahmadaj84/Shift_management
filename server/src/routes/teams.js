@@ -1,6 +1,7 @@
 // Team-scoped routes: /api/teams/:teamId/...
-import { Router } from 'express';
-import { db, save } from '../db.js';
+import express, { Router } from 'express';
+import { db, nextId, save } from '../db.js';
+import { buildImportTemplate, commitImportRows, MAX_ROWS, parseImportFile, validateImportRows } from '../importTeam.js';
 import { canManageTeam, canViewTeam, findTeam, teamCtx, teamLabels } from '../org.js';
 import { balanceDaysOff, rotationStaff, weekdayCoverage } from '../scheduler.js';
 import scheduleRoutes from './schedule.js';
@@ -69,6 +70,47 @@ r.post('/:teamId/balance-days-off', requireTeamManager, (req, res) => {
   const offCount = balanceDaysOff(rotationStaff(req.ctx));
   save();
   res.json({ offCount, coverage: weekdayCoverage(req.ctx) });
+});
+
+// ---- import members from Excel / CSV ----
+r.get('/:teamId/import/template', requireTeamManager, async (req, res, next) => {
+  try {
+    const wb = await buildImportTemplate(req.query.lang === 'en' ? 'en' : 'ar');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="team-import-template.xlsx"');
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Body: the raw file bytes. Nothing is saved: returns what would happen.
+r.post(
+  '/:teamId/import/preview',
+  requireTeamManager,
+  express.raw({ type: () => true, limit: '5mb' }),
+  async (req, res) => {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: 'Empty file' });
+    const parsed = await parseImportFile(req.body);
+    if (parsed.error) return res.status(400).json({ error: `import.${parsed.error}`, maxRows: MAX_ROWS });
+    const rows = validateImportRows(db(), req.user, req.team, parsed.rows);
+    res.json({ columns: parsed.columns, rows, raw: parsed.rows });
+  }
+);
+
+// Body: { rows: raw rows from the preview }. Valid rows are created/updated, others skipped.
+r.post('/:teamId/import/commit', requireTeamManager, (req, res) => {
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows : null;
+  if (!rows || !rows.length) return res.status(400).json({ error: 'Empty file' });
+  if (rows.length > MAX_ROWS) return res.status(400).json({ error: 'import.tooManyRows' });
+  const clean = rows.map((r) => ({
+    row: Number(r.row) || 0,
+    values: Object.fromEntries(Object.entries(r.values || {}).map(([k, v]) => [k, String(v ?? '').slice(0, 200)])),
+  }));
+  const result = commitImportRows(db(), req.user, req.team, clean, () => nextId('user'));
+  save();
+  res.json(result);
 });
 
 r.use('/:teamId/schedule', scheduleRoutes);
